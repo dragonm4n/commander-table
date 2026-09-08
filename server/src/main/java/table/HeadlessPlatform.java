@@ -26,7 +26,7 @@ public final class HeadlessPlatform {
     case "showOptionDialog":return -1;
     case "showInputDialog":return args[3]==null?"":args[3];
     case "getChoices":case "order":return List.of();
-    case "getNewGuiGame":throw new UnsupportedOperationException("A mesa requer pelo menos um jogador humano.");
+    case "getNewGuiGame":throw new UnsupportedOperationException("The table requires at least one human player.");
    }
    if(m.getReturnType()==boolean.class)return false;
    if(m.getReturnType()==int.class)return 0;

@@ -21,7 +21,7 @@ def state(s):
 def act(s,g,**b):
  try:return call('/api/rooms/'+s['room']+'/action',s['token'],dict(b,controlVersion=g['controlVersion'],requestId=secrets.token_hex(12)))
  except AssertionError as e:
-  if any(x in str(e) for x in ['mudou','mudaram','atualização','Aguarde','decisão','escolha']):return None
+  if any(x in str(e) for x in ['changed','update','Wait','choice','answered']):return None
   raise
 def own(g,seat):return next(p for p in g['players'] if p['seat']==seat)
 def cards(g,seat,zone='Battlefield'):return own(g,seat)['zones'][zone]['cards']
@@ -39,12 +39,12 @@ def advance(s,g):
   else:b['selected']=[o['id'] for o in d['options'][:d['min']]]
   return act(s,g,**b)
  msg=g.get('message','')
- if 'Quem deve iniciar' in msg:return act(s,g,action='player',playerId=own(g,0)['id'])
- if 'descartar' in msg.lower():
+ if 'Who would you like to start' in msg:return act(s,g,action='player',playerId=own(g,0)['id'])
+ if 'discard' in msg.lower():
   c=next((c for c in cards(g,s['seat'],'Hand') if c.get('selectable') and not c.get('selected')),None)
   if c:return act(s,g,action='card',cardId=c['id'])
  if g.get('ok',{}).get('enabled'):return act(s,g,action='ok')
- if 'Pagar Custo de Mana' in msg:return
+ if 'Pay Mana Cost' in msg:return
  if g.get('cancel',{}).get('enabled'):return act(s,g,action='cancel')
 
 try:
@@ -74,13 +74,19 @@ try:
  else:raise AssertionError('Fixture not installed')
  assert any(c.get('counters',{}).get('+1/+1')==2 for c in cards(g,3)), 'Counter label is not +1/+1: '+str([(c['name'],c.get('counters')) for c in cards(g,3)])
  print('PASS: +1/+1 counter label and quantity',flush=True)
- cycle=1;cast_started=set();drain_started=set();counter_started=False;drain_edge=False;counter_edge=False;three_stack=False;captured_images=[];tome_started=False;tome_seen=False;mana_spent=False;manalith_started=False
+ cycle=1;cast_started=set();drain_started=set();counter_started=False;drain_edge=False;counter_edge=False;three_stack=False;captured_images=[];tome_started=False;tome_announced=False;tome_seen=False;drain_announced=False;mana_spent=False;manalith_started=False
  deadline=time.time()+120
  while time.time()<deadline:
   g=state(host);stack=g.get('stack',[])
   announcement=own(g,0).get('lastAction') or {}
-  if announcement.get('kind')=='activate' and announcement.get('card',{}).get('name')=='Jayemdae Tome' and len(cards(g,0,'Hand'))==1 and not stack:
-   if not tome_seen:print('PASS: activated ability announcement links to Jayemdae Tome; draw resolved',flush=True)
+  if announcement.get('kind')=='activate' and announcement.get('card',{}).get('name')=='Jayemdae Tome':
+   assert any(x['id']==announcement['stackId'] for x in stack),'Announcement is not linked to a stack item'
+   tome_announced=True
+  for p in g['players']:
+   if (p.get('lastAction') or {}).get('card',{}).get('name')=='Mana Drain':drain_announced=True
+  if tome_announced and len(cards(g,0,'Hand'))==1 and not stack:
+   assert not own(g,0).get('lastAction'),'Resolved ability announcement remained visible'
+   if not tome_seen:print('PASS: activated announcement links to its stack item and disappears after the draw resolves',flush=True)
    tome_seen=True
   names=[x['card']['name'] for x in stack]
   if len(stack)>=3:three_stack=True
@@ -91,8 +97,9 @@ try:
   if cycle==1 and not stack and any(c['name']=='Blade Splicer' for c in cards(g,0,'Graveyard')):
    assert drain_edge,'Mana Drain did not export its stack target'
    assert not cards(g,0) or not any(c.get('token') for c in cards(g,0)), 'Countered spell created an ETB token'
-   assert own(g,1).get('lastAction',{}).get('card',{}).get('name')=='Mana Drain','Cast announcement missing'
-   print('PASS: Mana Drain targets/counters Blade Splicer; no ETB; clickable cast source',flush=True);cycle=2
+   assert drain_announced,'Cast announcement missing while pending'
+   assert all(not p.get('lastAction') for p in g['players']),'Resolved or countered announcements remained visible'
+   print('PASS: Mana Drain targets/counters Blade Splicer; no ETB; resolved and countered notices cleared',flush=True);cycle=2
   if cycle==2 and any(c.get('token') for c in cards(g,0)):
    assert counter_edge and three_stack, 'Counterspell response was not represented correctly'
    token=next(c for c in cards(g,0) if c.get('token'));assert token.get('tokenImages'), 'No token printing image metadata'
@@ -122,7 +129,7 @@ try:
     if d['id'] not in seen:
      seen.add(d['id']);act(session,v,action='answer',decisionId=d['id'],selected=[option['id']])
     continue
-   priority=not d and v.get('ok',{}).get('enabled') and v.get('message','').startswith('Prioridade:')
+   priority=not d and v.get('ok',{}).get('enabled') and v.get('message','').startswith('Priority:')
    if cycle==3 and seat==0 and priority and not vstack and not tome_started:
     tome=next(c for c in cards(v,0) if c['name']=='Jayemdae Tome')
     if act(session,v,action='card',cardId=tome['id']) is not None:tome_started=True
@@ -131,7 +138,7 @@ try:
     card=next(c for c in cards(v,1,'Hand') if c['name']=='Manalith')
     if act(session,v,action='card',cardId=card['id']) is not None:manalith_started=True
     continue
-   if cycle==4 and seat==1 and manalith_started and not mana_spent and 'Pagar Custo de Mana' in v.get('message',''):
+   if cycle==4 and seat==1 and manalith_started and not mana_spent and 'Pay Mana Cost' in v.get('message',''):
     if act(session,v,action='mana',color=32) is not None:mana_spent=True
     continue
    # Keep this observation window open: the next client in the loop must not
@@ -161,7 +168,7 @@ finally:
  process.terminate()
  try:process.wait(timeout=5)
  except subprocess.TimeoutExpired:process.kill()
- lines=[s for s in log.read_text(errors='replace').splitlines() if 'Chave do anfitrião:' not in s]
- errors=[i for i,s in enumerate(lines) if 'Exception' in s or 'Projection:' in s or 'Erro em' in s]
+ lines=[s for s in log.read_text(errors='replace').splitlines() if 'Host key:' not in s and 'Chave do anfitrião:' not in s]
+ errors=[i for i,s in enumerate(lines) if 'Exception' in s or 'Projection:' in s or 'Error in ' in s]
  if errors:print('FORGE ERRORS:\n'+'\n'.join(lines[errors[0]:errors[0]+55]),flush=True)
  assert not errors,'Forge reported an error during the stack regression'

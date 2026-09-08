@@ -9,7 +9,7 @@ type Path={key:string;kind:Edge['kind'];d:string;label:string};
 function anchor(target:Edge['from']){
  const selectors:string[]=[];
  if(target.kind==='stack')selectors.push(`[data-stack-id="${target.id}"]`);
- if(target.kind==='card')selectors.push(`[data-card-id="${target.id}"]`);
+ if(target.kind==='card')selectors.push(`[data-card-id="${target.id}"]`,`[data-attached-ids~="${target.id}"]`,`[data-token-ids~="${target.id}"]`);
  if('zone' in target&&target.zone)selectors.push(`[data-zone-seat="${target.seat}"][data-zone="${target.zone}"]`);
  selectors.push(`[data-player-seat="${target.seat}"]`);
  for(const selector of selectors)for(const node of document.querySelectorAll<HTMLElement>(selector)){
@@ -27,7 +27,7 @@ function anchor(target:Edge['from']){
 
 export default function TargetArrows({game,enabled}:{game:Game;enabled:boolean}){
  const [paths,setPaths]=useState<Path[]>([]);
- const edges:Edge[]=[...(game.stack??[]).flatMap(item=>(item.targets??[]).map((target,i)=>({key:`s${item.id}-${i}`,kind:'target' as const,from:{kind:'stack' as const,id:item.id,seat:item.seat,name:item.card.name},to:target,label:`${item.card.name}: alvo ${target.name}`}))),...(game.combat??[]).map((edge,i)=>({key:`c${i}`,kind:edge.kind,from:edge.source,to:edge.target,label:`${edge.source.name} ${edge.kind==='attack'?'ataca':'bloqueia'} ${edge.target.name}`}))];
+ const edges:Edge[]=[...(game.stack??[]).flatMap(item=>(item.targets??[]).map((target,i)=>({key:`s${item.id}-${i}`,kind:'target' as const,from:{kind:'stack' as const,id:item.id,seat:item.seat,name:item.card.name},to:target,label:`${item.card.name}: target ${target.name}`}))),...(game.combat??[]).map((edge,i)=>({key:`c${i}`,kind:edge.kind,from:edge.source,to:edge.target,label:`${edge.source.name} ${edge.kind==='attack'?'attacks':'blocks'} ${edge.target.name}`}))];
  const encoded=JSON.stringify(edges);
  useEffect(()=>{
   if(!enabled){setPaths([]);return;}
@@ -38,5 +38,5 @@ export default function TargetArrows({game,enabled}:{game:Game;enabled:boolean})
   const observer=new ResizeObserver(schedule);document.querySelectorAll('.battlefields,.hand-cards,.priority-dock').forEach(node=>observer.observe(node));
   return()=>{cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('resize',schedule);document.removeEventListener('scroll',schedule,true);};
  },[encoded,enabled,game.controlVersion]);
- return <svg className="target-arrows" aria-label="Alvos e combate" role="img"><defs>{['target','attack','block'].map(kind=><marker id={`arrow-${kind}`} key={kind} markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path className={`arrow-${kind}`} d="M0,0 L8,4 L0,8 Z"/></marker>)}</defs>{paths.map(path=><g key={path.key}><path className="arrow-shadow" d={path.d}/><path className={`arrow-line arrow-${path.kind}`} d={path.d} markerEnd={`url(#arrow-${path.kind})`}><title>{path.label}</title></path></g>)}</svg>;
+ return <svg className="target-arrows" aria-label="Targets and combat" role="img"><defs>{['target','attack','block'].map(kind=><marker id={`arrow-${kind}`} key={kind} markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path className={`arrow-${kind}`} d="M0,0 L8,4 L0,8 Z"/></marker>)}</defs>{paths.map(path=><g key={path.key}><path className="arrow-shadow" d={path.d}/><path className={`arrow-line arrow-${path.kind}`} d={path.d} markerEnd={`url(#arrow-${path.kind})`}><title>{path.label}</title></path></g>)}</svg>;
 }

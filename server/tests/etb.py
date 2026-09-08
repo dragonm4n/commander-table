@@ -21,7 +21,7 @@ def state(s):
 def act(s,g,**b):
  try:return call('/api/rooms/'+s['room']+'/action',s['token'],dict(b,controlVersion=g['controlVersion'],requestId=secrets.token_hex(12)))
  except AssertionError as e:
-  if any(x in str(e) for x in ['mudou','mudaram','atualização','Aguarde','decisão','escolha']):return None
+  if any(x in str(e) for x in ['changed','update','Wait','choice','answered']):return None
   raise
 def own(g,seat):return next(p for p in g['players'] if p['seat']==seat)
 def cards(g,seat,zone='Battlefield'):return own(g,seat)['zones'][zone]['cards']
@@ -39,12 +39,12 @@ def advance(s,g):
   else:b['selected']=[o['id'] for o in d['options'][:d['min']]]
   return act(s,g,**b)
  msg=g.get('message','')
- if 'Quem deve iniciar' in msg:return act(s,g,action='player',playerId=own(g,0)['id'])
- if 'descartar' in msg.lower():
+ if 'Who would you like to start' in msg:return act(s,g,action='player',playerId=own(g,0)['id'])
+ if 'discard' in msg.lower():
   c=next((c for c in cards(g,s['seat'],'Hand') if c.get('selectable') and not c.get('selected')),None)
   if c:return act(s,g,action='card',cardId=c['id'])
  if g.get('ok',{}).get('enabled'):return act(s,g,action='ok')
- if 'Pagar Custo de Mana' in msg:return
+ if 'Pay Mana Cost' in msg:return
  if g.get('cancel',{}).get('enabled'):return act(s,g,action='cancel')
 
 try:
@@ -69,7 +69,7 @@ try:
  process.stdin.write('fixture\n');process.stdin.flush()
  for _ in range(50):
   g=state(host)
-  if any(c['name']=='The One Ring' for c in cards(g,0,'Hand')):break
+  if 'FIXTURE READY' in log.read_text() and any(c['name']=='The One Ring' for c in cards(g,0,'Hand')):break
   time.sleep(.1)
  else:raise AssertionError('Fixture not installed')
  assert not protection(g,3),'Uncast Ring gave protection'
@@ -86,7 +86,7 @@ try:
   if str(sig)!=last:
    print('STATE',str(sig)[:900],flush=True);last=str(sig)
   for item in g.get('stack',[]):
-   if any(t in item['text'].lower() for t in ['protection from everything','proteção contra tudo']):ring_trigger=True
+   if any(t in item['text'].lower() for t in ['protection from everything']):ring_trigger=True
    if 'golem' in item['text'].lower():token_trigger=True
    for target in item.get('targets',[]):seen_targets.add(target['kind'])
   idle=not g.get('stack') and not g.get('decision') and g.get('ok',{}).get('enabled') and g.get('activeSeat')==0
@@ -106,9 +106,9 @@ try:
   if stage in ['ring','splicer','bolt_player','bolt_card'] and stage not in started and idle:
    name={'ring':'The One Ring','splicer':'Blade Splicer','bolt_player':'Lightning Bolt','bolt_card':'Lightning Bolt'}[stage]
    c=next(c for c in cards(g,0,'Hand') if c['name']==name)
-   if act(host,g,action='card',cardId=c['id']) is not None:started.add(stage)
+   if act(host,g,action='card',cardId=c['id']) is not None:started.add(stage);print('CAST',stage,name,flush=True)
    time.sleep(.2);continue
-  if stage.startswith('bolt_') and stage in started and not g.get('decision') and ('alvo' in g.get('message','').lower() or 'target' in g.get('message','').lower()) and not g.get('stack'):
+  if stage.startswith('bolt_') and stage in started and not g.get('decision') and ('target' in g.get('message','').lower()) and not g.get('stack'):
    if stage=='bolt_player':
     if not protected_attempt:
      act(host,g,action='player',playerId=own(g,0)['id']);time.sleep(.2);check=state(host)
@@ -117,7 +117,7 @@ try:
     else:act(host,g,action='player',playerId=own(g,2)['id'])
    else:
     c=next(c for c in cards(g,2) if c['name']=='Grizzly Bears');act(host,g,action='card',cardId=c['id'])
-  elif stage=='combat' and g.get('phase')=='COMBAT_DECLARE_ATTACKERS' and 'Prioridade:' not in g.get('message','') and not g.get('message','').startswith('Waiting') and attack_step<2:
+  elif stage=='combat' and g.get('phase')=='COMBAT_DECLARE_ATTACKERS' and 'Priority:' not in g.get('message','') and not g.get('message','').startswith('Waiting') and attack_step<2:
    if attack_step==0:
     if act(host,g,action='player',playerId=own(g,1)['id']) is not None:attack_step=1
    else:
@@ -126,7 +126,7 @@ try:
   else:advance(host,g)
   for s in sessions[1:]:
    v=state(s)
-   if stage=='combat' and s['seat']==1 and v.get('phase')=='COMBAT_DECLARE_BLOCKERS' and 'Prioridade:' not in v.get('message','') and not v.get('message','').startswith('Waiting') and block_step<2:
+   if stage=='combat' and s['seat']==1 and v.get('phase')=='COMBAT_DECLARE_BLOCKERS' and 'Priority:' not in v.get('message','') and not v.get('message','').startswith('Waiting') and block_step<2:
     c=next(c for c in cards(v,0) if c.get('token')) if block_step==0 else next(c for c in cards(v,1) if c['name']=='Grizzly Bears')
     if act(s,v,action='card',cardId=c['id']) is not None:block_step+=1
    else:advance(s,v)
@@ -136,6 +136,6 @@ finally:
  process.terminate()
  try:process.wait(timeout=5)
  except subprocess.TimeoutExpired:process.kill()
- lines=[s for s in log.read_text(errors='replace').splitlines() if 'Chave do anfitrião:' not in s]
- errors=[i for i,s in enumerate(lines) if 'Exception' in s or 'Projection:' in s or 'Erro em' in s]
+ lines=[s for s in log.read_text(errors='replace').splitlines() if 'Host key:' not in s and 'Chave do anfitrião:' not in s]
+ errors=[i for i,s in enumerate(lines) if 'Exception' in s or 'Projection:' in s or 'Error in ' in s]
  if errors:print('FORGE ERRORS:\n'+'\n'.join(lines[errors[0]:errors[0]+55]),flush=True)

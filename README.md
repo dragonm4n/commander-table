@@ -1,112 +1,66 @@
 # Commander Table
 
-Interface web de Commander para quatro jogadores, com regras e inteligência
-artificial executadas pelo [Forge](https://github.com/Card-Forge/forge).
-O computador anfitrião executa o servidor Java; convidados usam o navegador.
-Os assentos vazios são preenchidos pelas IAs nativas do Forge.
+A four-seat web Commander table powered by the [Forge](https://github.com/Card-Forge/forge) rules engine and native AI. The host runs a Java server; guests connect in a browser. Empty seats are filled by Forge AI when the game begins.
 
-Versão dos recursos: **alpha 0.3**. Projeto independente, sem afiliação com
-Wizards of the Coast, Forge, EDHLab ou Scryfall.
+Current feature release: **alpha 0.4**. Independent project, unaffiliated with Wizards of the Coast, Forge, EDHLab or Scryfall.
 
-## Recursos atuais
+## Features
 
-- Quatro campos simultâneos, terrenos abaixo das outras permanentes e mão privada.
-- Prioridade no canto inferior direito e etapas do turno compactas.
-- Avisos de mágicas e habilidades com inspeção da carta de origem.
-- Pilha controlada pelo Forge, seleção de alvos e setas de alvo/combate.
-- Artes de cartas e fichas obtidas do Scryfall e marcadores legíveis.
-- Sons originais do Forge, ativados pelo jogador no navegador.
-- Importação de decks, listas salvas no navegador e backup em JSON.
-- Multiplayer com 1–4 humanos; demais lugares ocupados pelas IAs.
+- Four simultaneous, symmetric battlefields with separate land and permanent lanes and a private hand.
+- English interface, engine prompts, launchers and documentation.
+- Overlapping Equipment and Auras, including attachments controlled by another player.
+- Identical tokens grouped with a quantity badge and individual card interaction.
+- Searchable library-choice windows with card art and inspection.
+- Commander names beside players, compact phase dots and a full-table Round counter.
+- Forge-controlled stack, targets, combat, counters and mana; announcements clear when their stack item leaves.
+- One to four humans, AI in remaining seats, persistent browser seat recovery and private rejoin links.
+- Scryfall card/token art, bundled Forge sounds, chat and game history.
+- Deck import, reusable browser-saved lists and JSON backups.
 
-## Relação com o Forge
+## Source layout
 
-Este repositório contém a interface e o módulo Java `forge-web`, cuja fonte fica
-em `server/`. Ele utiliza o Forge como dependência, na revisão registrada em
-`FORGE_REVISION`. As regras das cartas continuam no Forge.
-
-Na compilação, a ponte é adicionada ao conjunto de módulos Maven do Forge.
-Não há alterações nas fontes de seu motor de regras nesta versão. Por isso,
-um repositório próprio é suficiente. Se forem necessárias alterações no motor,
-um fork separado do Forge pode manter essas mudanças e receber atualizações
-do projeto original; este repositório então aponta para a revisão desse fork.
-
-## Organização
-
-| Caminho | Conteúdo |
+| Path | Content |
 | --- | --- |
-| `app/`, `components/`, `lib/` | Interface, projeção do estado e decks salvos |
-| `standalone/` | Entrada da aplicação no navegador |
-| `public/sounds/` | Efeitos MP3 do Forge e sua procedência |
-| `server/src/` | Ponte Java entre o navegador e o Forge |
-| `server/tests/` | Cenários de integração com o Forge real |
-| `server/BUILD.md` | Compilação da ponte e execução dos testes |
-| `server/LEIA-ME.md` | Instalação e uso do pacote executável |
-| `server/VALIDACAO.md` | Casos testados e limites da validação |
-| `PUBLICAR-NO-GITHUB.md` | Como enviar este projeto ao GitHub |
+| `app/`, `components/`, `lib/` | Browser UI, state projection, saved decks and connections |
+| `standalone/` | Static browser entry point for the local Java server |
+| `public/sounds/` | Unmodified Forge MP3 effects and provenance |
+| `server/src/` | Java bridge between the browser and Forge |
+| `server/tests/` | Real-engine HTTP regression scenarios |
+| `server/BUILD.md` | Native build and test instructions |
+| `server/README.md` | Installation and player guide |
+| `server/VALIDATION.md` | Tested cases and validation limits |
+| `PUBLISHING.md` | Update this repository and create a GitHub release |
 
-## Desenvolver a interface
+## Forge relationship
 
-Requisitos: Node.js 22.13 ou superior e npm.
+The bridge is built as Forge's `forge-web` Maven module, against revision `53a103721d627ecb76a2ea52b2febe894844f288` (2.0.15-SNAPSHOT). Card rules and AI remain in Forge. No upstream rules-engine sources are modified in this version; the root Maven module list is adjusted for the bridge build. A separate repository is sufficient for the UI and bridge. Engine changes, if needed later, can live in a separate Forge fork pinned by this project.
+
+## Develop and build
+
+Requirements: Node.js 22.13+ and npm; Java/JDK 17+, Maven 3.9+, Python 3 and Git for the native server.
 
 ```sh
 npm ci
-npm run dev
+npx vite --config vite.standalone.config.ts
+npx tsc --noEmit
+node --experimental-strip-types --test lib/*.test.mjs
+npx vite build --config vite.standalone.config.ts
 ```
 
-Abra o endereço exibido pelo Vite. Para jogar, conecte a interface ao servidor
-Java local ou a seu endereço HTTPS. O servidor pode ser o da distribuição
-alpha 0.3; ele continua necessário mesmo durante o desenvolvimento da interface.
+The standalone build writes `server/web`. Use an **alpha 0.4 Java server** while developing the interface; older bridges do not provide the new attachment, library-choice or recovery metadata. In this GitHub checkout, `npm run dev`, `npm run build`, `npm run typecheck` and `npm test` provide the equivalent standalone commands.
 
-```sh
-npm run typecheck
-npm test
-npm run build
-```
+Follow [server/BUILD.md](server/BUILD.md) to build the bridge. With source files committed, `python server/distribute.py PATH_TO_FORGE NEW_OUTPUT_DIRECTORY` creates the runnable `Commander-Table-alpha-0.4.zip`, including corresponding source.
 
-O build escreve a interface pronta em `server/web`.
+## API and session behavior
 
-## Compilar o servidor e montar uma distribuição
+`GET /api/health` checks the server. `POST /api/rooms` requires the host key. `POST /api/rooms/:id/join` joins a free lobby seat with an invitation; a persisted private `resumeKey` makes retries return the same seat. `POST /api/rooms/:id/resume` uses that private key to recover an existing seat during the game as well.
 
-Também são necessários Java/JDK 17+, Maven 3.9+, Python 3 e Git. Os passos
-detalhados estão em [server/BUILD.md](server/BUILD.md).
+Seat-token routes provide `state`, `deck`, `start`, `chat`, `action`, `disconnect` and `leave`. Disconnect keeps the seat reserved; leave explicitly releases it in the lobby. Actions carry a request ID, control version and, when applicable, decision ID. Clients receive a player-specific projection excluding other hands and unauthorized library identities. The browser polls serially; Forge remains authoritative.
 
-1. Clone o Forge em `.deps/forge` e faça checkout da revisão de `FORGE_REVISION`.
-2. Copie a pasta `server` deste projeto para `.deps/forge/forge-web`.
-3. No `pom.xml` da raiz do Forge, ajuste a lista de módulos conforme `server/BUILD.md`.
-4. Na raiz do Forge, execute a compilação Maven indicada nesse documento.
-5. De volta à raiz deste repositório, execute `npm ci` e `npm run build`.
-6. Com os fontes registrados no Git, execute:
+Round is presentation metadata for normal turn rotations; native individual turns and card rules are unchanged. Extra turns, skipped turns and eliminated players are accounted for by the separate round tracker.
 
-```sh
-python server/distribute.py .deps/forge releases
-```
+## Limits and credits
 
-O script gera `releases/Commander-Table-alpha-0.3.zip`, com servidor, dependências,
-recursos, interface e os fontes correspondentes. O diretório `releases` é ignorado
-pelo Git. Para disponibilizar o programa, anexe esse ZIP a uma **Release**.
+The game lives in the host process's memory. Rejoining restores a running room, but restarting Java loses it. New humans cannot replace AIs mid-game. Decks and recovery credentials are stored per browser/site origin. Keep your private rejoin link and export deck backups before switching devices or tunnel addresses. There is no voice/video, game replay, persistent game saving or full EDHLab feature parity.
 
-## Limites
-
-O motor precisa ficar aberto no computador anfitrião. Novos humanos entram antes
-do início; uma IA não é substituída durante a partida. Reiniciar o servidor perde
-a sala. Não há gravação de partidas, chamada de voz/vídeo ou paridade completa
-com o EDHLab.
-
-Listas salvas pertencem ao navegador e à origem do site. Exporte o backup antes
-de trocar de computador, endereço de túnel ou limpar dados do navegador.
-As artes dependem da disponibilidade do Scryfall.
-
-## Licenças e créditos
-
-O código da ponte e as novas partes deste projeto são distribuídos sob
-**GPL-3.0-or-later**, em continuidade com o Forge. Consulte [LICENSE](LICENSE).
-As bibliotecas e os recursos de terceiros mantêm suas próprias licenças e avisos,
-incluindo `vendor/` e os avisos dos recursos do Forge.
-
-Os MP3s foram copiados sem alterações de `forge-gui/res/sound` na revisão indicada
-em `FORGE_REVISION`; veja `public/sounds/README.md`. Magic: The Gathering e suas
-artes pertencem aos respectivos titulares. As artes não integram este repositório.
-
-Referências: [Forge](https://github.com/Card-Forge/forge),
-[Scryfall API](https://scryfall.com/docs/api).
+Bridge and UI additions are **GPL-3.0-or-later**; see `LICENSE`. Third-party assets and libraries retain their own notices. The runnable package includes the corresponding Forge sources and resources. Sound provenance is in `public/sounds/README.md`. Magic: The Gathering and its artwork belong to their respective owners; card images are retrieved from Scryfall and are not bundled.

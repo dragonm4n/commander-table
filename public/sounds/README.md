@@ -8,4 +8,4 @@ Upstream: https://github.com/Card-Forge/forge
 The corresponding Forge source and license are included in the standalone
 Commander Table distribution under `source/forge` and `LICENSE`.
 The browser uses Forge's `EventVisualizer` event mapping. Card-specific scripted
-sound files are not loaded. Audio starts only after the player enables **Som**.
+sound files are not loaded. Audio starts only after the player enables **Sound**.

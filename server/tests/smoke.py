@@ -60,12 +60,12 @@ try:
     if label not in seen:
      seen.append(label)
      if len(seen)<30:print('INPUT',s['seat'],g.get('turn'),g.get('phase'),g.get('message','')[:120],g.get('ok'),flush=True)
-    if 'Quem deve iniciar' in g.get('message',''):
+    if 'Who would you like to start' in g.get('message',''):
      verb={'action':'player','playerId':own['id']}
     if g.get('activeSeat')==s['seat'] and g.get('phase')=='MAIN1':
      land=next((c for c in own['zones']['Hand']['cards'] if c.get('land') ),None)
      if land and not any(c.get('land') for c in own['zones']['Battlefield']['cards']):verb={'action':'card','cardId':land['id']}
-    if not verb and 'descartar' in g.get('message','').lower():
+    if not verb and 'discard' in g.get('message','').lower():
      discard=next((c for c in own['zones']['Hand']['cards'] if c.get('selectable') and not c.get('selected')),None)
      if discard:verb={'action':'card','cardId':discard['id']}
     if not verb and g.get('ok',{}).get('enabled'):verb={'action':'ok'}
@@ -74,7 +74,7 @@ try:
    if verb:
     try:action(s,g,**verb);actions+=1
     except AssertionError as e:
-     if not any(x in str(e) for x in ['mudou','mudaram','atualização','Aguarde','decisão','escolha']):print('ACTION ERROR',str(e)[:250],flush=True)
+     if not any(x in str(e) for x in ['changed','update','Wait','choice','answered']):print('ACTION ERROR',str(e)[:250],flush=True)
   if ai_played and human_land:
    print('PASS: two human clients + two native AIs; private hands/libraries; human land play; AI permanents;',actions,'actions',flush=True)
    break
@@ -87,6 +87,8 @@ finally:
  process.terminate()
  try:process.wait(timeout=5)
  except subprocess.TimeoutExpired:process.kill()
- lines=[s for s in log.read_text(errors='replace').splitlines() if 'Chave do anfitrião:' not in s]
- errors=[i for i,s in enumerate(lines) if 'Exception' in s or 'Projection:' in s or 'Erro em' in s]
+ lines=[s for s in log.read_text(errors='replace').splitlines() if 'Host key:' not in s and 'Chave do anfitrião:' not in s]
+ errors=[i for i,s in enumerate(lines) if 'Exception' in s or 'Projection:' in s or 'Error in ' in s]
  if errors:print('FORGE ERRORS:\n'+'\n'.join(lines[errors[0]:errors[0]+40]),flush=True)
+
+ assert not errors,'Forge reported an error in the smoke regression'

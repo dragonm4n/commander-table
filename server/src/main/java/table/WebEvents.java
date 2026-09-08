@@ -12,20 +12,22 @@ import static table.TableServer.*;
 public final class WebEvents {
  private final WebGui gui;
  private final EventVisualizer sounds;
- private final Map<Integer,Map<String,Object>> actions=new HashMap<>();
+ private final Map<Integer,Map<String,Object>> actions=new LinkedHashMap<>();
  private final Deque<Map<String,Object>> audio=new ArrayDeque<>();
  private long serial=0;
  WebEvents(WebGui gui){this.gui=gui;sounds=new EventVisualizer(gui.room.seats[gui.seat].registered.getPlayer());}
- synchronized Map<String,Object> lastAction(int seat){return actions.get(seat);}
+ synchronized Map<String,Object> lastAction(int seat){Map<String,Object> result=null;for(var action:actions.values())if(Objects.equals(action.get("seat"),seat))result=action;return result;}
  synchronized List<Map<String,Object>> sounds(){return new ArrayList<>(audio);}
  @Subscribe public void receive(GameEvent event){
   boolean changed=false;
   if(event instanceof GameEventSpellAbilityCast cast){
    int seat=gui.room.seatFor(cast.si().getActivatingPlayer());
    if(seat>=0){CardView card=cast.si().getSourceCard();String kind=cast.sa().isSpell()?"cast":cast.si().isTrigger()?"trigger":"activate";
-    synchronized(this){actions.put(seat,obj("id",++serial,"kind",kind,"card",gui.card(card,false),"text",cast.si().getText()));}changed=true;
+    synchronized(this){actions.put(cast.sa().getId(),obj("id",++serial,"seat",seat,"stackId",cast.si().getId(),"kind",kind,"card",gui.card(card,false),"text",cast.si().getText()));}changed=true;
    }
   }
+  if(event instanceof GameEventSpellResolved resolved){synchronized(this){changed|=actions.remove(resolved.spell().getId())!=null;}}
+  if(event instanceof GameEventSpellRemovedFromStack removed){synchronized(this){changed|=actions.remove(removed.sa().getId())!=null;}}
   // Sound names carry no card identity. Do not forward scripted/custom filenames.
   SoundEffectType sound=event.visit(sounds);
   if(sound!=null&&sound!=SoundEffectType.ScriptedEffect){String name=sound.getResourceFileName();
