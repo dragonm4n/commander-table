@@ -1,0 +1,12 @@
+import {Layers3} from 'lucide-react';
+import {Card,Game} from '@/lib/table';
+import DecisionPanel from './decision-panel';
+
+export default function PriorityDock({game,busy,canAct,onAction,onInspect,onStack}:{game:Game;busy:boolean;canAct:boolean;onAction:(body:Record<string,unknown>)=>void;onInspect:(card:Card)=>void;onStack:()=>void}){
+ const active=!!game.decision||game.ok.enabled||game.cancel.enabled;
+ const targetOption=(id:number)=>game.decision?.kind==='stack'?game.decision.options.find(o=>o.stackId===id):undefined;
+ return <section className={`priority-dock ${active?'needs-action':''}`} aria-label="Prioridade e escolhas">
+  {game.stack?.length>0&&<div className="stack-strip"><button className="stack-label" onClick={onStack}><Layers3 size={14}/>Pilha · {game.stack.length}</button>{game.stack.map((item,i)=><button key={item.id} data-stack-id={item.id} className={`stack-chip ${targetOption(item.id)?'stack-selectable':''}`} disabled={busy} title={`${targetOption(item.id)?'Escolher como alvo: ':''}${item.text}${item.targets?.length?' → '+item.targets.map(t=>t.name).join(', '):''}`} onClick={()=>{const option=targetOption(item.id);if(option&&game.decision)onAction({action:'answer',decisionId:game.decision.id,selected:[option.id]});else onInspect(item.card)}}><span>{i===0?'TOPO':i+1}</span>{item.card.name||'Habilidade'}{targetOption(item.id)?<small>Escolher como alvo</small>:item.targets?.length?<small>→ {item.targets.map(t=>t.name).join(', ')}</small>:null}</button>)}</div>}
+  {game.decision?<DecisionPanel key={game.decision.id} decision={game.decision} busy={busy} onAnswer={body=>onAction({action:'answer',...body})} onInspect={onInspect}/>:<div className="priority-line"><div><span className="eyebrow">{active?'SUA PRIORIDADE / AÇÃO':'AGUARDANDO A MESA'}</span><p aria-live="polite">{game.message||'Aguardando o Forge…'}</p></div><div className="prompt-buttons"><button className="primary" disabled={!canAct||!game.ok.enabled} onClick={()=>onAction({action:'ok'})}>{game.ok.label||'Confirmar'}</button><button disabled={!canAct||!game.cancel.enabled} onClick={()=>onAction({action:'cancel'})}>{game.cancel.label||'Cancelar'}</button></div></div>}
+ </section>;
+}

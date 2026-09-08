@@ -1,0 +1,16 @@
+node_modules/
+.deps/
+releases/
+profile/
+server/web/
+server/target/
+server/lib/
+**/__pycache__/
+*.pyc
+*.tsbuildinfo
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
