@@ -62,7 +62,7 @@ try:
  with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
   replies=list(pool.map(lambda _:call(route(host,'join'),body=payload),range(2)))
  guest=replies[0];same(guest,replies[1]);assert guest['seat']==1
- call(route(guest,'deck'),guest['token'],{'deck':'Feline Ferocity'})
+ call(route(guest,'deck'),guest['token'],{'deck':'Elven Empire'})
  call(route(guest,'disconnect'),guest['token'],{})
  before=call(route(host,'state'),host['token']);assert before['seats'][1]['ready'] and not before['seats'][1]['connected']
  same(guest,resume(guest));same(guest,call(route(host,'join'),body=payload))
@@ -72,7 +72,7 @@ try:
  sessions=[host,guest]
  for i in range(2,4):sessions.append(call(route(host,'join'),body={'player':f'Tester {i}','invite':host['invite']}))
  assert [s['seat'] for s in sessions]==[0,1,2,3]
- for s in sessions:call(route(s,'deck'),s['token'],{'deck':'Feline Ferocity'})
+ for s in sessions:call(route(s,'deck'),s['token'],{'deck':'Elven Empire'})
  public=call(route(host,'state'),host['token']);assert 'resumeKey' not in json.dumps(public) and 'token' not in json.dumps(public)
  assert all(s['commander'] for s in public['seats'])
  print('PASS: concurrent join retries use one seat; disconnect/rejoin keeps deck and readiness; release revokes access; same names cannot claim a seat',flush=True)

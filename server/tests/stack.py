@@ -55,7 +55,7 @@ try:
  else:raise AssertionError('Server did not start')
  host=call('/api/rooms',admin,{'name':'Stack regression','player':'Tester 0'});sessions=[host]
  for i in range(1,4):sessions.append(call('/api/rooms/'+host['room']+'/join',body={'player':f'Tester {i}','invite':host['invite']}))
- for s in sessions:call('/api/rooms/'+s['room']+'/deck',s['token'],{'deck':'Feline Ferocity'})
+ for s in sessions:call('/api/rooms/'+s['room']+'/deck',s['token'],{'deck':'Elven Empire'})
  call('/api/rooms/'+host['room']+'/start',host['token'],{})
  deadline=time.time()+60
  while time.time()<deadline:

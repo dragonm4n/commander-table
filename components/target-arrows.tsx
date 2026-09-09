@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useState} from 'react';
 import {Game,Target} from '@/lib/table';
+import {combatArrows} from '@/lib/combat';
 
 type Edge={key:string;kind:'target'|'attack'|'block';from:Target;to:Target;label:string};
 type Path={key:string;kind:Edge['kind'];d:string;label:string};
@@ -27,12 +28,12 @@ function anchor(target:Edge['from']){
 
 export default function TargetArrows({game,enabled}:{game:Game;enabled:boolean}){
  const [paths,setPaths]=useState<Path[]>([]);
- const edges:Edge[]=[...(game.stack??[]).flatMap(item=>(item.targets??[]).map((target,i)=>({key:`s${item.id}-${i}`,kind:'target' as const,from:{kind:'stack' as const,id:item.id,seat:item.seat,name:item.card.name},to:target,label:`${item.card.name}: target ${target.name}`}))),...(game.combat??[]).map((edge,i)=>({key:`c${i}`,kind:edge.kind,from:edge.source,to:edge.target,label:`${edge.source.name} ${edge.kind==='attack'?'attacks':'blocks'} ${edge.target.name}`}))];
+ const edges:Edge[]=[...(game.stack??[]).flatMap(item=>(item.targets??[]).map((target,i)=>({key:`s${item.id}-${i}`,kind:'target' as const,from:{kind:'stack' as const,id:item.id,seat:item.seat,name:item.card.name},to:target,label:`${item.card.name}: target ${target.name}`}))),...combatArrows(game.combat).map((edge,i)=>({key:`c${i}`,kind:edge.kind,from:edge.source,to:edge.target,label:`${edge.source.name} ${edge.kind==='attack'?'attacks':'blocks'} ${edge.target.name}`}))];
  const encoded=JSON.stringify(edges);
  useEffect(()=>{
   if(!enabled){setPaths([]);return;}
   const current:Edge[]=JSON.parse(encoded);let frame=0;
-  const measure=()=>{frame=0;setPaths(current.flatMap((edge,i)=>{const a=anchor(edge.from),b=anchor(edge.to);if(!a||!b)return [];const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);if(len<12)return [];const ex=b.x-dx/len*(b.r+7),ey=b.y-dy/len*(b.r+7);const bend=Math.min(65,len*.15)*(i%2?-1:1);return [{key:edge.key,kind:edge.kind,label:edge.label,d:`M ${a.x} ${a.y} Q ${(a.x+ex)/2-dy/len*bend} ${(a.y+ey)/2+dx/len*bend} ${ex} ${ey}`}]}));};
+  const measure=()=>{frame=0;setPaths(current.flatMap((edge,i)=>{const a=anchor(edge.from),b=anchor(edge.to);if(!a||!b)return [];const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);if(len<12)return [];const ex=b.x-dx/len*(b.r+7),ey=b.y-dy/len*(b.r+7);const bend=Math.min(65,len*.15)*(edge.kind==='target'&&i%2?-1:1);return [{key:edge.key,kind:edge.kind,label:edge.label,d:`M ${a.x} ${a.y} Q ${(a.x+ex)/2-dy/len*bend} ${(a.y+ey)/2+dx/len*bend} ${ex} ${ey}`}]}));};
   const schedule=()=>{if(!frame)frame=requestAnimationFrame(measure);};schedule();
   window.addEventListener('resize',schedule);document.addEventListener('scroll',schedule,true);
   const observer=new ResizeObserver(schedule);document.querySelectorAll('.battlefields,.hand-cards,.priority-dock').forEach(node=>observer.observe(node));

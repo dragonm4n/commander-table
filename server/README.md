@@ -1,4 +1,4 @@
-# Commander Table — alpha 0.4
+# Commander Table — alpha 0.5
 
 A four-seat web Commander table powered by Forge's rules engine and native AI. The host runs the Java server; guests only need a browser. This package includes the web interface, served by the same program.
 
@@ -21,16 +21,23 @@ On Linux/macOS, use `bash start.sh` and, after installing cloudflared, `bash tun
 
 ## Play
 
+- Before starting, the host can enable **Watch 4 AIs** in the lobby. All four seats use native Forge AI; the host can choose all four decks and then watch. Human guests must release their seats first. The spectator cannot play cards or see private hands/libraries.
+- Card previews have magnifying-glass buttons and a zoom slider below the image. Enlarged art can be scrolled. Click a card's magnifier to keep its preview open.
+- **View battlefield** minimizes a large choice or zone window. Use **Return to choice** (or **Return to** the zone) to reopen it. Pending selections, their order and entered amounts are preserved.
+- During your own turn, the action panel beside your hand is teal. **End Turn** asks for confirmation before passing your turn; ordinary confirmations and passing on another player's turn keep their normal behavior.
+- Eliminated players retain a **Defeated** notice on their battlefield. The winner receives a **Victory!** notice and a result banner after the game ends.
+
 - All four battlefields are visible and equally sized. Lands occupy the lower lane; creatures and other permanents occupy the upper lane. Scroll each lane when needed. Your private hand sits at the bottom.
 - **Round** counts one full rotation of normal turns around the table. It starts at 1 and advances when the next rotation begins. Extra turns stay in the current round; skipped turns and eliminated players do not block the counter. Forge still tracks individual turns for card rules; hover over Round to see that number.
 - The dots show the phases in order; the current phase is gold. Hover for the full name. Commander names appear beside player names, including both partners.
+- The active player's name is bold and gold, with an illuminated avatar and header, including on small screens.
 - Equipment, Auras and other attached permanents appear behind their host with an offset. Click the link badge to inspect or select any attached card. An Aura controlled by another player is displayed with its host. Effects attached to a player show that player's name.
 - Identical tokens form a group marked **×N**. Click the group to select an individual token. Different counters, tapped states, damage, power/toughness, combat status or selection state keep tokens separate. Attached tokens remain separate as well.
 - Click cards to cast, activate or select them. Click a player's portrait or life total to select that player. Forge decides what is legal and handles all changes to life, zones, mana and counters.
 - Priority controls stay beside your hand in the bottom-right corner. Library searches, reveals and ordering choices open a larger window with card images, search and inspection. Confirm the selection there. Only options authorized by Forge are shown.
 - Player-header announcements link to the source card while a spell or ability is on the stack. They disappear when it resolves, is countered or otherwise leaves the stack.
 - When choosing a stack target, select the highlighted item or its thumbnail option, then **Confirm target**. Use **Cancel selection** when cancellation is allowed.
-- Gold arrows indicate declared targets; red arrows indicate attacks; blue arrows indicate blocks. Toggle them with **Arrows**. Effects without targets do not create target arrows.
+- Gold arrows indicate declared targets; blue arrows indicate blocks as you assign them, before confirmation. A blocked attack's red arrow points to each assigned blocker; removing all blockers restores the arrow to its original defender. This is a visual aid, not a change to damage or trample rules. Toggle them with **Arrows**. Effects without targets do not create target arrows.
 - Use the zone buttons for the command zone, graveyard, exile and authorized library reveals. Other players' hands and hidden library cards stay private.
 - Hover over a card, or click its magnifying glass, to inspect it. Inside a library or token/attachment window, the preview appears within that window.
 - Open **Stack**, **Chat** and **History** from the top bar. Enable **Sound** to hear the bundled Forge effects; click again to mute.
@@ -48,7 +55,20 @@ Saved credentials belong to the browser and site address. Changing tunnel addres
 
 ## Decks
 
-Six preconstructed decks are included. To import, enter English card names, one per line, such as `1 Sol Ring`, and put commander names in their separate field. Partners use separate lines. Set/collector suffixes such as `1 Card Name (SET) 123` are accepted. Forge validates Commander construction and rejects unrecognized or unimplemented cards.
+Seven preconstructed decks are included. To import, enter English card names, one per line, such as `1 Sol Ring`, and put commander names in their separate field. Partners use separate lines. Set/collector suffixes such as `1 Card Name (SET) 123` are accepted. Forge validates Commander construction and rejects unrecognized or unimplemented cards.
+
+| Precon | Commander | Theme |
+| --- | --- | --- |
+| Draconic Domination | The Ur-Dragon | Dragons |
+| Vampiric Bloodlust | Edgar Markov | Vampires |
+| Breed Lethality | Atraxa, Praetors' Voice | Counters and proliferate |
+| Elven Empire | Lathril, Blade of the Elves | Elves |
+| Undead Unleashed | Wilhelt, the Rotcleaver | Zombies and sacrifice |
+| Lorehold Legacies | Osgir, the Reconstructor | Artifacts and graveyard recursion |
+| Planar Portal | Prosper, Tome-Bound | Casting from exile and Treasures |
+
+These are the precon lists bundled with the pinned Forge resources, without custom upgrades.
+The server validates all seven decks during startup and reports a missing or invalid list.
 
 A successfully confirmed imported list is saved in **My decks** using the supplied name. Choose **Use list** to reuse it and confirm it for the seat. Reimporting the same list updates its name without duplication.
 
@@ -62,10 +82,10 @@ The 39 MP3 effects in `web/sounds` are copied unchanged from `forge-gui/res/soun
 
 ## Limits
 
-- One active table per server, with one to four humans and native Forge AIs in empty seats.
+- One active table per server, with one to four humans and native Forge AIs in empty seats, or four AIs watched by the host.
 - New humans join in the lobby. AI seats cannot be replaced after the game starts. A disconnected human keeps their seat.
 - The host computer, Java process and tunnel must remain running. The temporary tunnel changes address when restarted and depends on Cloudflare availability.
-- No game persistence across server restarts, dedicated spectators, voice/video, freeform drag-and-drop or full EDHLab feature parity.
+- No game persistence across server restarts, additional spectator seats, voice/video, freeform drag-and-drop or full EDHLab feature parity. The host can spectate a four-AI table.
 - The automated scenarios exercise real games but do not cover every card combination or a full match. See `VALIDATION.md` for coverage and remaining validation limits.
 - Card images require Scryfall access. A full image collection is not bundled.
 

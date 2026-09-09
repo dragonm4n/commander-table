@@ -55,7 +55,7 @@ try:
  else:raise AssertionError('Server did not start')
  host=call('/api/rooms',admin,{'name':'ETB regression','player':'Tester 0'});sessions=[host]
  for i in range(1,4):sessions.append(call('/api/rooms/'+host['room']+'/join',body={'player':f'Tester {i}','invite':host['invite']}))
- for s in sessions:call('/api/rooms/'+s['room']+'/deck',s['token'],{'deck':'Feline Ferocity'})
+ for s in sessions:call('/api/rooms/'+s['room']+'/deck',s['token'],{'deck':'Elven Empire'})
  call('/api/rooms/'+host['room']+'/start',host['token'],{})
  deadline=time.time()+60
  while time.time()<deadline:
@@ -101,7 +101,26 @@ try:
   if stage=='expiry' and g.get('activeSeat')==0 and g['turn']>initial_turn and g.get('phase')=='MAIN1':
    assert not protection(g,0),'Ring protection did not expire';print('PASS: protection expired at controller next turn',flush=True);stage='combat'
   if stage=='combat' and any(e['kind']=='block' for e in g.get('combat',[])):
-   assert any(e['kind']=='attack' for e in g['combat']);print('PASS: real attacker/defender and blocker/attacker edges exported',flush=True);break
+   assert g['phase']=='COMBAT_DECLARE_BLOCKERS','Block was only published after declaration'
+   assert block_step==2,'Unexpected block before both card selections'
+   edge=next(e for e in g['combat'] if e['kind']=='block')
+   assert any(e['kind']=='attack' and e['source']['id']==edge['target']['id'] for e in g['combat'])
+   defender=sessions[1]
+   # Toggle the provisional assignment off and on without pressing Confirm.
+   for expected in [False,True]:
+    for _ in range(30):
+     v=state(defender)
+     assert v['phase']=='COMBAT_DECLARE_BLOCKERS' and 'Priority:' not in v.get('message','')
+     if act(defender,v,action='card',cardId=edge['source']['id']) is not None:break
+     time.sleep(.1)
+    else:raise AssertionError('Block input did not settle after projection update')
+    for _ in range(30):
+     views=[state(s) for s in sessions]
+     if all(any(e['kind']=='block' for e in view.get('combat',[]))==expected for view in views):break
+     time.sleep(.1)
+    else:raise AssertionError('Provisional block change did not reach every seat')
+    assert all(view['phase']=='COMBAT_DECLARE_BLOCKERS' for view in views)
+   print('PASS: provisional blocker add/remove/re-add reaches all four seats before confirmation',flush=True);break
   if stage not in ['expiry','combat']:assert g['turn']==initial_turn,'Spell was not completed: '+stage
   if stage in ['ring','splicer','bolt_player','bolt_card'] and stage not in started and idle:
    name={'ring':'The One Ring','splicer':'Blade Splicer','bolt_player':'Lightning Bolt','bolt_card':'Lightning Bolt'}[stage]

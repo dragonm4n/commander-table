@@ -24,22 +24,26 @@ public final class WebGui extends BaseWebGui {
  public volatile Decision prompt;public volatile int controlVersion=0;
  private volatile String message="Waiting for the game",okLabel="Confirm",cancelLabel="Cancel";
  private volatile boolean okEnabled=false,cancelEnabled=false;
+ private final Map<Integer,PlayerView> knownPlayers=new LinkedHashMap<>();
  private final Map<Integer,CardView> knownCards=new ConcurrentHashMap<>();
  static final ITriggerEvent CLICK=new ITriggerEvent(){public int getButton(){return 1;}public int getX(){return 0;}public int getY(){return 0;}};
  WebGui(TableServer.Room r,int s){room=r;seat=s;}
  public synchronized void refresh(){
   try{
-   GameView g=getGameView();Map<String,Object> state=obj("controlVersion",controlVersion,"message",message,"ok",obj("label",okLabel,"enabled",okEnabled),"cancel",obj("label",cancelLabel,"enabled",cancelEnabled),"decision",prompt==null?null:prompt.publicData);
+   GameView g=getGameView();Map<String,Object> state=obj("controlVersion",controlVersion,"message",message,"cancelEndsTurn",cancelLabel.equalsIgnoreCase("End Turn"),"ok",obj("label",okLabel,"enabled",okEnabled),"cancel",obj("label",cancelLabel,"enabled",cancelEnabled),"decision",prompt==null?null:prompt.publicData);
    if(g!=null){state.put("turn",g.getTurn());state.put("round",room.rounds.value());state.put("phase",g.getPhase()==null?"":g.getPhase().name());state.put("activeSeat",room.seatFor(g.getPlayerTurn()));state.put("over",g.isGameOver());state.put("winner",g.getWinningPlayerName());
     List<Object> players=new ArrayList<>();PlayerView viewer=getCurrentPlayer();
-    for(PlayerView p:g.getPlayers()){
+    for(PlayerView p:g.getPlayers())knownPlayers.put(p.getId(),p);
+    if(room.hosted!=null&&room.hosted.getGame()!=null)for(Player p:room.hosted.getGame().getRegisteredPlayers())knownPlayers.put(p.getId(),p.getView());
+    int winnerSeat=-1;for(PlayerView p:knownPlayers.values())if(p.getName().equals(g.getWinningPlayerName()))winnerSeat=room.seatFor(p);state.put("winnerSeat",winnerSeat);
+    for(PlayerView p:knownPlayers.values()){
      Map<String,Object> zones=new LinkedHashMap<>();for(ZoneType z:List.of(ZoneType.Battlefield,ZoneType.Hand,ZoneType.Library,ZoneType.Command,ZoneType.Graveyard,ZoneType.Exile)){
       List<Object> cards=new ArrayList<>();for(CardView c:p.getCards(z).threadSafeIterable()){
-       if((z==ZoneType.Hand||z==ZoneType.Library)&&!c.canBeShownTo(viewer))continue;
+       if((z==ZoneType.Hand||z==ZoneType.Library)&&(room.aiOnly||!c.canBeShownTo(viewer)))continue;
        cards.add(card(c,false));
       }zones.put(z.name(),obj("count",p.getZoneSize(z),"cards",cards));
      }
-     List<Object> commanders=new ArrayList<>();for(PlayerView owner:g.getPlayers())if(owner.getCommanders()!=null)for(CardView c:owner.getCommanders())commanders.add(obj("name",c.getName(),"from",room.seatFor(owner),"damage",p.getCommanderDamage(c),"casts",owner.getCommanderCast(c)));
+     List<Object> commanders=new ArrayList<>();for(PlayerView owner:knownPlayers.values())if(owner.getCommanders()!=null)for(CardView c:owner.getCommanders())commanders.add(obj("name",c.getName(),"from",room.seatFor(owner),"damage",p.getCommanderDamage(c),"casts",owner.getCommanderCast(c)));
      List<Object> mana=new ArrayList<>();for(byte color:forge.card.mana.ManaAtom.MANATYPES)mana.add(obj("color",color,"amount",p.getMana(color)));
      List<Object> statuses=new ArrayList<>();
      if(p.getKeywords()!=null)for(var keyword:p.getKeywords().getValues())statuses.add(obj("name",keyword.original(),"title",keyword.title(),"text",keyword.reminderText()));
@@ -58,7 +62,10 @@ public final class WebGui extends BaseWebGui {
     if(fight!=null)for(CardView attacker:fight.getAttackers()){
      GameEntityView defender=fight.getDefender(attacker);
      if(defender!=null)combat.add(obj("kind","attack","source",target(attacker),"target",target(defender)));
-     if(fight.getBlockers(attacker)!=null)for(CardView blocker:fight.getBlockers(attacker))combat.add(obj("kind","block","source",target(blocker),"target",target(attacker)));
+     // Forge keeps tentative assignments separate until blockers are confirmed.
+     // Prefer the planning map during declaration, including an empty map after undo.
+     var blockers=g.getPhase()==PhaseType.COMBAT_DECLARE_BLOCKERS?fight.getPlannedBlockers(attacker):fight.getBlockers(attacker);
+     if(blockers!=null)for(CardView blocker:blockers)combat.add(obj("kind","block","source",target(blocker),"target",target(attacker)));
     }state.put("combat",combat);state.put("sounds",events==null?List.of():events.sounds());
     // Only public log categories: never export debug/private information or arbitrary engine objects.
     Set<GameLogEntryType> types=EnumSet.of(GameLogEntryType.TURN,GameLogEntryType.MULLIGAN,GameLogEntryType.LAND,GameLogEntryType.STACK_ADD,GameLogEntryType.STACK_RESOLVE,GameLogEntryType.COMBAT,GameLogEntryType.DAMAGE,GameLogEntryType.LIFE,GameLogEntryType.GAME_OUTCOME);
@@ -79,21 +86,22 @@ public final class WebGui extends BaseWebGui {
   if(entity instanceof PlayerView p)return obj("kind","player","id",p.getId(),"seat",room.seatFor(p),"name",p.getName());
   CardView c=(CardView)entity;String zone=c.getZone()==null?"":c.getZone().name();int controller=room.seatFor(c.getController());
   // A target in a private zone must not reveal its identity or a trackable card ID.
-  if((c.getZone()==ZoneType.Hand||c.getZone()==ZoneType.Library)&&!c.canBeShownTo(getCurrentPlayer()))return obj("kind","zone","seat",controller,"zone",zone,"name","Card in a hidden zone");
+  if((c.getZone()==ZoneType.Hand||c.getZone()==ZoneType.Library)&&(room.aiOnly||!c.canBeShownTo(getCurrentPlayer())))return obj("kind","zone","seat",controller,"zone",zone,"name","Card in a hidden zone");
   return obj("kind","card","id",c.getId(),"seat",controller,"zone",zone,"name",card(c,false).get("name"));
  }
  Map<String,Integer> counters(GameEntityView c){Map<String,Integer> r=new LinkedHashMap<>();if(c.getCounters()!=null)for(CounterType t:c.getCounters().elementSet())r.put(t.getName(),c.getCounters(t));return r;}
  Map<String,Object> card(CardView c,boolean explicitlyRevealed){
   if(c==null)return obj("name","","hidden",true);
   knownCards.put(c.getId(),c);PlayerView viewer=getCurrentPlayer();
-  boolean hidden=!explicitlyRevealed&&(!c.canBeShownTo(viewer)||!c.canFaceDownBeShownTo(viewer));
+  boolean publicZone=c.getZone()==ZoneType.Battlefield||c.getZone()==ZoneType.Command||c.getZone()==ZoneType.Graveyard||c.getZone()==ZoneType.Exile||c.getZone()==ZoneType.Stack;
+  boolean hidden=room.aiOnly?(!publicZone||c.isFaceDown()):!explicitlyRevealed&&(!c.canBeShownTo(viewer)||!c.canFaceDownBeShownTo(viewer));
   Map<String,Object> r=obj("id",c.getId(),"hidden",hidden,"name",hidden?"Face-down card":c.getName(),"tapped",c.isTapped(),"attacking",c.isAttacking(),"blocking",c.isBlocking(),"selected",isHighlighted(c),"selectable",isSelectable(c),"actionable",isWeaklySelectable(c),"zone",c.getZone()==null?"":c.getZone().name(),"counters",counters(c),"controllerSeat",room.seatFor(c.getController()));
   if(c.getEntityAttachedTo()!=null)r.put("attachedTo",target(c.getEntityAttachedTo()));
   if(!hidden){CardView.CardStateView v=c.getCurrentState();r.putAll(obj("imageName",c.getOracleName()==null?c.getName():c.getOracleName(),"type",v.getType().toString(),"text",c.getText(),"mana",v.getManaCost().toString(),"creature",v.isCreature(),"land",v.isLand(),"power",v.getPower(),"toughness",v.getToughness(),"loyalty",v.getLoyalty(),"sick",c.isSick(),"token",c.isToken(),"commander",c.isCommander(),"transformed",v.getState()==forge.card.CardStateName.Backside,"damage",c.getDamage()));
    if(c.isToken()){String key=v.getImageKey(viewer==null?List.of():List.of(viewer));r.put("tokenImages",TokenArt.paths(key));if(key!=null&&key.startsWith("c:"))r.put("imageName",key.substring(2).split("\\|")[0]);}
   }return r;
  }
- @Override public void setGameView(GameView g){super.setGameView(g);refresh();}
+ @Override public void setGameView(GameView g){if(g==null&&room.status.equals("finished"))return;super.setGameView(g);refresh();}
  @Override protected void updateCurrentPlayer(PlayerView p){refresh();}
  @Override public void openView(TrackableCollection<PlayerView> p){refresh();}
  @Override public void showPromptMessage(PlayerView p,String text,CardView c){message=text;controlVersion++;refresh();}

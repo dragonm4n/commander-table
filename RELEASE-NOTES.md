@@ -1,19 +1,32 @@
-# Commander Table alpha 0.4
+# Commander Table alpha 0.5
 
-This release improves battlefield readability, card selection and multiplayer seat recovery.
+Seven bundled Commander precons, expanded card inspection, four-AI tables and initial Commander AI improvements.
 
-- English interface, Forge prompts, launchers and documentation.
-- Overlapping Equipment, Auras and other attached permanents, with individual inspection and interaction.
-- Identical tokens grouped with quantity badges; tokens with different game states remain separate.
-- Searchable popup windows for library choices, reveals and card ordering.
-- Commander names beside player names, including partners.
-- Full-table Round counter, separate from Forge's individual turn tracking.
-- Spell and ability announcements clear when their stack item resolves or leaves the stack.
-- Reconnection restores the same seat, deck, private hand and pending choice while the server remains running.
-- Separate Disconnect and Release seat actions, plus a private rejoin link for another browser or device.
+## Deck catalog
 
-Stack interactions, native attachment/search actions, round tracking and multiplayer recovery are covered by automated regression scenarios. The test coverage and remaining limits are documented in `server/VALIDATION.md`.
+Retained: **Draconic Domination** (The Ur-Dragon) and **Vampiric Bloodlust** (Edgar Markov).
 
-To update, finish the current game, stop the old server and extract the complete runnable ZIP into a new folder. Run `start-windows.bat` on Windows or `bash start.sh` on Linux/macOS, then reload the interface. Both the Java server and web files must be updated together. Existing games do not survive a server restart.
+Added:
+- **Breed Lethality** — Atraxa, Praetors' Voice: counters and proliferate.
+- **Elven Empire** — Lathril, Blade of the Elves: Elves.
+- **Undead Unleashed** — Wilhelt, the Rotcleaver: Zombies and sacrifice.
+- **Lorehold Legacies** — Osgir, the Reconstructor: artifacts and recursion.
+- **Planar Portal** — Prosper, Tome-Bound: exile casting and Treasures.
 
-This is an experimental release. New humans join before the game starts; unused seats are filled by Forge AI. There is no saved-game recovery across server restarts.
+Feline Ferocity, Plunder the Graves, Swell the Host and Seize Control are removed from the selectable catalog. The lists are the precons bundled with Forge, without custom upgrades. All seven are validated during server startup.
+
+## Gameplay and interface
+
+- Initial AI adjustments reduce low-life targeting bias and account for individual commander damage when evaluating threats and defenders.
+- Bold active-player names and illuminated avatars; a teal action panel on your turn.
+- Confirmation before ending your own turn.
+- Block arrows appear before declaration is confirmed; attack arrows follow assigned blockers.
+- Card-art zoom controls and minimizable choice/zone windows with preserved selections.
+- Host spectator mode for four native AIs, with private hands and libraries.
+- Persistent defeated-player notices and a visible victory banner.
+
+## Install
+
+Extract the complete runnable ZIP into a new folder. Stop the old server before using port 8787, then run `start-windows.bat` or `start.sh`. Java 17 or later is required. Games do not survive a server restart.
+
+Forge remains pinned to `53a103721d627ecb76a2ea52b2febe894844f288` (2.0.15-SNAPSHOT), with the reproducible Commander Table AI overlay. Package version: `0.5.0-alpha.5`. See `server/VALIDATION.md` for test coverage; this release does not claim a measured full-match AI win-rate improvement.

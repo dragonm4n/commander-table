@@ -26,7 +26,7 @@ public final class HeadlessPlatform {
     case "showOptionDialog":return -1;
     case "showInputDialog":return args[3]==null?"":args[3];
     case "getChoices":case "order":return List.of();
-    case "getNewGuiGame":throw new UnsupportedOperationException("The table requires at least one human player.");
+    case "getNewGuiGame":for(var room:TableServer.ROOMS.values())if(room.aiOnly&&(room.status.equals("starting")||room.status.equals("playing"))&&room.seats[0].gui!=null)return room.seats[0].gui;throw new IllegalStateException("No spectator table is starting.");
    }
    if(m.getReturnType()==boolean.class)return false;
    if(m.getReturnType()==int.class)return 0;

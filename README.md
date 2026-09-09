@@ -2,7 +2,7 @@
 
 A four-seat web Commander table powered by the [Forge](https://github.com/Card-Forge/forge) rules engine and native AI. The host runs a Java server; guests connect in a browser. Empty seats are filled by Forge AI when the game begins.
 
-Current feature release: **alpha 0.4**. Independent project, unaffiliated with Wizards of the Coast, Forge, EDHLab or Scryfall.
+Current feature release: **alpha 0.5**. Independent project, unaffiliated with Wizards of the Coast, Forge, EDHLab or Scryfall.
 
 ## Features
 
@@ -13,7 +13,8 @@ Current feature release: **alpha 0.4**. Independent project, unaffiliated with W
 - Searchable library-choice windows with card art and inspection.
 - Commander names beside players, compact phase dots and a full-table Round counter.
 - Forge-controlled stack, targets, combat, counters and mana; announcements clear when their stack item leaves.
-- One to four humans, AI in remaining seats, persistent browser seat recovery and private rejoin links.
+- One to four humans, AI in remaining seats, or a host watching four AIs; persistent browser seat recovery and private rejoin links.
+- Zoomable card previews, minimizable choices, own-turn confirmation and visible defeat/victory notices.
 - Scryfall card/token art, bundled Forge sounds, chat and game history.
 - Deck import, reusable browser-saved lists and JSON backups.
 
@@ -33,7 +34,7 @@ Current feature release: **alpha 0.4**. Independent project, unaffiliated with W
 
 ## Forge relationship
 
-The bridge is built as Forge's `forge-web` Maven module, against revision `53a103721d627ecb76a2ea52b2febe894844f288` (2.0.15-SNAPSHOT). Card rules and AI remain in Forge. No upstream rules-engine sources are modified in this version; the root Maven module list is adjusted for the bridge build. A separate repository is sufficient for the UI and bridge. Engine changes, if needed later, can live in a separate Forge fork pinned by this project.
+The bridge is built as Forge's `forge-web` Maven module, against revision `53a103721d627ecb76a2ea52b2febe894844f288` (2.0.15-SNAPSHOT). Card rules remain in Forge. The local AI preview applies the reproducible overlay in `server/forge-patches` using `server/apply_forge_patches.py`: it reduces the low-life targeting bias in Commander and adds individual commander-damage pressure to defender/threat evaluation. Apply it before compiling Forge; see `server/BUILD.md`. This is an initial heuristic adjustment, not a measured improvement in full-match win rate.
 
 ## Develop and build
 
@@ -47,9 +48,9 @@ node --experimental-strip-types --test lib/*.test.mjs
 npx vite build --config vite.standalone.config.ts
 ```
 
-The standalone build writes `server/web`. Use an **alpha 0.4 Java server** while developing the interface; older bridges do not provide the new attachment, library-choice or recovery metadata. In this GitHub checkout, `npm run dev`, `npm run build`, `npm run typecheck` and `npm test` provide the equivalent standalone commands.
+The standalone build writes `server/web`. Use an **alpha 0.5 Java server** while developing the interface; older bridges do not provide the new attachment, library-choice or recovery metadata. In this GitHub checkout, `npm run dev`, `npm run build`, `npm run typecheck` and `npm test` provide the equivalent standalone commands.
 
-Follow [server/BUILD.md](server/BUILD.md) to build the bridge. With source files committed, `python server/distribute.py PATH_TO_FORGE NEW_OUTPUT_DIRECTORY` creates the runnable `Commander-Table-alpha-0.4.zip`, including corresponding source.
+Follow [server/BUILD.md](server/BUILD.md) to build the bridge. With source files committed, `python server/distribute.py PATH_TO_FORGE NEW_OUTPUT_DIRECTORY` creates the runnable `Commander-Table-alpha-0.5.zip`, including corresponding source.
 
 ## API and session behavior
 

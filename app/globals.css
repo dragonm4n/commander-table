@@ -192,3 +192,28 @@ a{color:inherit;text-decoration:none}.brand:hover{color:#fff}.connection{display
 .resume-panel{display:grid;gap:10px}.resume-panel p{font-size:13px;color:#b8c9d5}
 @media(max-width:750px){.commander-label{font-size:8px}.player-announcement{flex-basis:42%}.library-choice-layout{grid-template-columns:minmax(0,1fr) minmax(115px,28%);gap:9px}.popup-decision .decision-options{grid-template-columns:repeat(auto-fill,minmax(85px,1fr))}.choice-preview p{font-size:10px}.card-collection-modal .zone-grid{gap:8px}.card-collection-modal .table-card{width:85px}.card-collection-modal .is-tapped{width:118px}.card-collection-modal .is-tapped .card-art img{width:85px;height:118px}}
 @media(max-width:420px){.library-choice-modal,.card-collection-modal{padding:12px}.library-choice-layout{grid-template-columns:minmax(0,1fr) 105px;gap:8px}.popup-decision .decision-options{grid-template-columns:repeat(auto-fill,minmax(75px,1fr))}.choice-preview p{max-height:22dvh;overflow:auto}.is-match .player-header .avatar{display:none}.is-match .player-header b{font-size:9px}}
+
+/* Turn ownership stays visible even when the player cannot currently act. */
+.player-header .player-name{font-weight:500}
+.active-player .player-header{background:linear-gradient(90deg,#d9ad4526,transparent);box-shadow:inset 3px 0 #f3c66e}
+.active-player .player-header .player-name{font-weight:800;color:#ffe2a1;text-shadow:0 0 12px #edb54a50}
+.active-player .player-header .avatar{display:grid;flex-shrink:0;color:#ffe2a1;background:#634d28;border:2px solid #f3c66e;box-shadow:0 0 9px #edb54a66;opacity:1}
+.is-match .active-player .player-header .avatar{display:grid;width:25px;height:25px}
+
+/* Card zoom remains usable in both hover previews and modal choices. */
+.floating-card{width:min(340px,calc(100vw - 20px));max-height:calc(100dvh - 160px)}
+.floating-card.is-preview{pointer-events:auto}.floating-card.is-preview .panel-title button{visibility:visible}
+.zoomable-art{min-width:0;width:100%}.art-viewport{overflow:auto;max-height:55dvh;overscroll-behavior:contain;scrollbar-width:thin}
+.zoomable-art .art-scale .card-art{width:100%;max-width:none;margin:0}.art-scale{min-width:100%}
+.art-zoom-controls{display:flex;align-items:center;gap:5px;padding:8px 0;position:sticky;bottom:0;background:#10202b;z-index:1}
+.art-zoom-controls button{padding:5px;flex:none}.art-zoom-controls input{width:0;min-width:20px;flex:1;padding:0;accent-color:#ecc579}.art-zoom-controls output{font-size:11px;min-width:32px}
+.is-match .priority-dock.own-turn{background:linear-gradient(125deg,#123e4f,#172c40);border-color:#59bfd0;box-shadow:inset 3px 0 #64d4df}
+.priority-dock.own-turn .eyebrow{color:#8ce9ef}.priority-dock.own-turn .prompt-buttons .primary{background:#8bd5dc;color:#102830}
+.view-battlefield{display:flex;align-items:center;gap:7px;justify-self:start;font-size:12px;padding:7px 10px}
+.restore-choice{position:fixed;z-index:45;bottom:180px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:#e6c182;color:#132431;border:2px solid #fff0cc;border-radius:8px;padding:12px 18px;box-shadow:0 5px 25px #0009;font-weight:700;max-width:90vw}
+.battlefield{position:relative}.player-result{position:absolute;inset:45% 12px auto;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;text-align:center;padding:15px;border-radius:9px;pointer-events:none}
+.player-result strong{font-size:22px}.player-result span{width:100%;font-size:12px}.player-result.defeated{background:#271d29e8;color:#ffbcc4;border:1px solid #d47787}.player-result.victorious{background:#3d3015ec;color:#ffe3a0;border:1px solid #f3c768;box-shadow:0 0 22px #efb73835}
+.battlefield.lost-player{opacity:1}.lost-player .field-lanes{opacity:.3;filter:grayscale(1)}.winner-player{border-color:#ffe097!important;box-shadow:0 0 12px #e2b94d66}
+.match-result{display:flex;align-items:center;justify-content:center;gap:12px;padding:10px;background:#3a301c;border:1px solid #e1be70;border-radius:8px;color:#ffe3a0}.match-result strong,.match-result span{display:block}.match-result span{font-size:11px}
+.ai-mode{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0;padding:10px;border:1px solid #527385;border-radius:8px;font-size:13px}.ai-mode input{width:auto}.ai-mode span{width:100%;font-size:11px;color:#b4c7d4}
+@media(max-width:480px){.art-zoom-controls{gap:2px}.art-zoom-controls button{padding:3px}.player-result{padding:9px;inset:42% 5px auto}.player-result strong{font-size:16px}.player-result span{font-size:10px}.match-result{padding:6px;font-size:12px}.restore-choice{bottom:170px;font-size:12px;padding:10px}}

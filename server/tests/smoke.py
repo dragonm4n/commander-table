@@ -22,13 +22,25 @@ try:
   except (OSError,AssertionError):time.sleep(.3)
  else:raise RuntimeError('Forge did not become ready')
  print('HEALTH:',health['engine'],len(health['decks']),'precons',flush=True)
+ assert health['version']=='alpha-0.5',health.get('version')
+ expected={'Draconic Domination':'The Ur-Dragon','Vampiric Bloodlust':'Edgar Markov','Breed Lethality':"Atraxa, Praetors' Voice",'Elven Empire':'Lathril, Blade of the Elves','Undead Unleashed':'Wilhelt, the Rotcleaver','Lorehold Legacies':'Osgir, the Reconstructor','Planar Portal':'Prosper, Tome-Bound'}
+ assert {d['id']:d['commander'] for d in health['decks']}==expected,'Unexpected precon catalog'
+ print('PASS: alpha 0.5 exposes exactly the seven requested precons and commanders',flush=True)
  try:call('/api/rooms','incorrect-key',{})
  except AssertionError as e:assert '403' in str(e)
  else:raise AssertionError('Unauthenticated room creation was allowed')
  host=call('/api/rooms',admin,{'name':'Integration table','player':'Human A'})
+ for deck,commander in expected.items():
+  selected=call('/api/rooms/'+host['room']+'/deck',host['token'],{'deck':deck})
+  assert selected['seats'][0]['commander']==commander
+ for removed in ['Feline Ferocity','Plunder the Graves','Swell the Host','Seize Control']:
+  try:call('/api/rooms/'+host['room']+'/deck',host['token'],{'deck':removed})
+  except AssertionError as error:assert '400' in str(error)
+  else:raise AssertionError('Removed precon is still selectable: '+removed)
+ print('PASS: all seven precons selectable; all four retired entries rejected',flush=True)
  guest=call('/api/rooms/'+host['room']+'/join',body={'player':'Human B','invite':host['invite']})
  assert guest['seat']==1 and not guest.get('invite')
- for s in [host,guest]:call('/api/rooms/'+s['room']+'/deck',s['token'],{'deck':'Feline Ferocity'})
+ for s in [host,guest]:call('/api/rooms/'+s['room']+'/deck',s['token'],{'deck':'Elven Empire'})
  call('/api/rooms/'+host['room']+'/start',host['token'],{})
  ai_played=False;human_land=False;seen_decisions=set();actions=0;seen=[]
  until=time.time()+100

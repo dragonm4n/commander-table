@@ -1,10 +1,19 @@
 "use client";
 import {useState} from 'react';
+import type {Dispatch,SetStateAction} from 'react';
 import {ArrowDown,ArrowUp,Check,Search} from 'lucide-react';
 import {CardArt} from './table-card';
 import type {Card,Decision} from '@/lib/table';
-export default function DecisionPanel({decision:d,busy,onAnswer,onInspect,popup=false}:{decision:Decision;busy:boolean;onAnswer:(body:Record<string,unknown>)=>void;onInspect:(c:Card)=>void;popup?:boolean}){
- const [selected,setSelected]=useState<number[]>([]),[value,setValue]=useState(String(d.min)),[values,setValues]=useState<number[]>(d.options.map(()=>d.min)),[search,setSearch]=useState('');
+export type DecisionDraft={selected:number[];value:string;values:number[];search:string};
+export const emptyDraft=(d:Decision):DecisionDraft=>({selected:[],value:String(d.min),values:d.options.map(()=>d.min),search:''});
+export default function DecisionPanel({decision:d,busy,onAnswer,onInspect,popup=false,draft,onDraftChange}:{decision:Decision;busy:boolean;onAnswer:(body:Record<string,unknown>)=>void;onInspect:(c:Card)=>void;popup?:boolean;draft?:DecisionDraft;onDraftChange?:Dispatch<SetStateAction<DecisionDraft>>}){
+ const [local,setLocal]=useState<DecisionDraft>(()=>emptyDraft(d));
+ const {selected,value,values,search}=draft??local;
+ const update=onDraftChange??setLocal;
+ const setSelected=(next:SetStateAction<number[]>)=>update(old=>({...old,selected:typeof next==='function'?next(old.selected):next}));
+ const setValue=(value:string)=>update(old=>({...old,value}));
+ const setValues=(next:SetStateAction<number[]>)=>update(old=>({...old,values:typeof next==='function'?next(old.values):next}));
+ const setSearch=(search:string)=>update(old=>({...old,search}));
  const allocation=d.kind==='allocation',number=d.kind==='number',text=d.kind==='text',reveal=d.kind==='reveal',order=d.kind==='order',stack=d.kind==='stack';
  const toggle=(id:number)=>{if(reveal)return;setSelected(old=>old.includes(id)?old.filter(i=>i!==id):d.max===1?[id]:old.length<d.max?[...old,id]:old)};
  const valid=allocation?values.reduce((a,b)=>a+b,0)===d.max&&values.every(v=>Number.isInteger(v)&&v>=d.min):number?Number.isInteger(Number(value))&&Number(value)>=d.min&&Number(value)<=d.max:text?value.length<=500:reveal||selected.length>=(stack?Math.max(1,d.min):d.min)&&selected.length<=d.max;

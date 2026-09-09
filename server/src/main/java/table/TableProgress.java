@@ -2,6 +2,7 @@
 package table;
 import com.google.common.eventbus.Subscribe;
 import forge.game.event.GameEventTurnBegan;
+import forge.game.event.GameEventCombatChanged;
 import forge.game.player.PlayerView;
 import java.util.HashSet;
 
@@ -15,6 +16,12 @@ public final class TableProgress {
  }
  @Subscribe public void turn(GameEventTurnBegan event){
   track(event.turnNumber(),event.turnOwner());room.refresh();
+ }
+ @Subscribe public void combat(GameEventCombatChanged event){
+  // InputBlock emits this for additions AND removals, before confirmation.
+  // Publish a fresh CombatView for every seat on the engine event thread.
+  room.hosted.getGame().updateCombatForView();
+  room.refresh();
  }
  private void track(int turn,PlayerView owner){
   var game=room.hosted.getGame();var alive=new HashSet<Integer>();

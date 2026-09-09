@@ -1,6 +1,6 @@
 # Update Commander Table on GitHub
 
-This source package updates **Commander Table alpha 0.4**. The existing repository is https://github.com/dragonm4n/commander-table . No additional Forge fork is needed for the current bridge and interface.
+This source package updates **Commander Table alpha 0.5**. The existing repository is https://github.com/dragonm4n/commander-table . No additional Forge fork is needed for the current bridge and interface.
 
 ## Update an existing clone
 
@@ -13,7 +13,7 @@ This source package updates **Commander Table alpha 0.4**. The existing reposito
 ```sh
 git status
 git add .
-git commit -m "Release Commander Table alpha 0.4"
+git commit -m "Release Commander Table alpha 0.5"
 git push
 ```
 
@@ -28,15 +28,15 @@ cd commander-table
 
 Then follow the update steps above. Complete GitHub authentication in the browser or Git Credential Manager when requested. Do not put account passwords or access tokens in project files.
 
-## Create the alpha 0.4 release
+## Create the alpha 0.5 release
 
 After the source update is pushed:
 
 1. Open **Releases** in the repository and start a new release.
-2. Create tag **`v0.4.0-alpha.4`**, targeting the updated `main` branch.
-3. Use title **Commander Table alpha 0.4**.
+2. Create tag **`v0.5.0-alpha.5`**, targeting the updated `main` branch.
+3. Use title **Commander Table alpha 0.5**.
 4. Paste the text from `RELEASE-NOTES.md`.
-5. Attach **`Commander-Table-alpha-0.4.zip`**, the runnable package with its corresponding source.
+5. Attach **`Commander-Table-alpha-0.5.zip`**, the runnable package with its corresponding source.
 6. Mark this experimental release as a **pre-release**, then publish when ready.
 
 The GitHub source ZIP contains source files only; it does not replace the runnable ZIP. GitHub hosting does not run the Java server. Continue starting the server on the host computer and sharing table invitations through its tunnel.

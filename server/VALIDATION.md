@@ -1,4 +1,27 @@
-# Alpha 0.4 validation
+# Alpha 0.5 validation
+
+## Seven-precon release — alpha 0.5
+
+- The packaged server starts with exactly seven precons: Draconic Domination, Vampiric Bloodlust, Breed Lethality, Elven Empire, Undead Unleashed, Lorehold Legacies and Planar Portal. Every list passes Forge's Commander deck-conformance validation at startup.
+- `smoke.py` checks the `alpha-0.5` API version, all seven commander identities, successful selection of each deck and rejection of all four retired catalog entries. A real game with two humans and two AIs passes the existing privacy and land/permanent checks.
+- TypeScript checking, the production UI build and all 17 Node tests pass. UI/package metadata is `alpha 0.5` / `0.5.0-alpha.5`; the Forge engine revision remains unchanged.
+- The earlier sections below record the interface/AI checks performed before this catalog refresh. They are not a full-match benchmark for every new deck.
+
+## Interface and four-AI preview — 2026-09-08
+
+- `spectator.py` runs four native AIs through the real server. Checks host-only mode selection, refusal while human guests remain, spectator action rejection, game progress, visible public permanents and private hands/libraries. A test-only fixture concedes players on the engine's turn event to verify eliminated seats remain visible and final winner metadata survives spectator match cleanup.
+- `ui-preview.cjs` checks the compiled UI in Edge with synthetic API data: own-turn color, end-turn confirm/cancel, stale confirmation dismissal, no extra confirmation on an opponent's turn, card zoom, choice minimization with preserved order, zone-window minimization, defeat and victory. Desktop and mobile screenshots are written to `server/target` (artwork requests are disabled).
+- Java compilation, TypeScript checking, standalone production build and all 17 Node tests pass. These are targeted interface/integration checks, not a comprehensive test of every card or full AI match strategy.
+
+## Local AI and combat preview — 2026-09-08
+
+- Compiled the bridge and AI overlay with JDK 17 against the packaged Forge dependencies.
+- The generated runnable preview passes `smoke.py` via `java -jar`: two human clients plus two patched native AIs, private zones, human land play and AI permanents (32 actions).
+- `AiDecisionTest.java`: 98 assertions across real-engine scenarios, including 30 repeated selections for each of three defender-ranking cases. Covers resource threat versus low life, individual commander lethal, incoming commander danger, tapped/sick commanders, blockers, separate partner damage, Platinum Angel, Propaganda and a commander owned by another player. This is scenario validation, not a full-match win-rate benchmark.
+- All 17 Node tests pass, including provisional arrow redirection, multiple blockers, original-defender preservation and undo. TypeScript checks and the standalone production build pass.
+- The real-engine HTTP ETB scenario passes and verifies adding, removing and re-adding a blocker reaches all four seats during `COMBAT_DECLARE_BLOCKERS`, before confirmation.
+- Inspected the compiled UI in headless Edge at 1440×900 and 390×844 using a synthetic API fixture: active name/icon, both combat arrows, removal and turn transfer pass, with no browser JavaScript errors. Artwork requests were disabled for this layout check.
+- The preview changes AI sources through `apply_forge_patches.py`; the original alpha 0.4 validation below describes the earlier, unmodified engine release.
 
 The Java bridge is built with Forge core, game, AI and GUI modules at revision `53a103721d627ecb76a2ea52b2febe894844f288`, using Java 17. The UI passes TypeScript checks and production builds for the hosted frontend and standalone Java distribution. No upstream rules-engine source was changed.
 

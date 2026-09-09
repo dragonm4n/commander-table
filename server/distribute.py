@@ -5,6 +5,11 @@ import shutil, subprocess, sys, zipfile
 from pathlib import Path
 site=Path(__file__).resolve().parents[1]
 forge=Path(sys.argv[1]).resolve();out=Path(sys.argv[2]).resolve();dest=out/'Commander-Table'
+if not (forge/'forge-ai/src/main/java/forge/ai/CommanderThreat.java').is_file():
+ raise SystemExit('Apply server/apply_forge_patches.py to Forge and rebuild before distribution.')
+with zipfile.ZipFile(forge/'forge-web/target/lib/forge-ai-2.0.15-SNAPSHOT.jar') as ai_jar:
+ if 'forge/ai/CommanderThreat.class' not in ai_jar.namelist():
+  raise SystemExit('The AI dependency was not rebuilt with the Commander Table overlay.')
 if dest.exists():
  raise SystemExit('Choose a fresh output directory to avoid including files from an older build.')
 dest.mkdir(parents=True)
@@ -32,7 +37,7 @@ for name in files:
   d=ui/name;d.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,d)
 # The standalone build emits to server/web and needs an existing parent only.
 (ui/'server').mkdir(exist_ok=True)
-archive=out/'Commander-Table-alpha-0.4.zip'
+archive=out/'Commander-Table-alpha-0.5.zip'
 with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as z:
  for p in sorted(dest.rglob('*')):
   if p.is_file() and 'profile' not in p.relative_to(dest).parts:z.write(p,p.relative_to(out))
