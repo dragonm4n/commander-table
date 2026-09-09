@@ -6,6 +6,7 @@ final class RoundTracker {
  private int round=0,lastTurn=0;
  private final Set<Integer> visited=new HashSet<>(),remaining=new HashSet<>();
  synchronized int value(){return round;}
+ synchronized void reset(){round=0;lastTurn=0;visited.clear();remaining.clear();}
  synchronized void begin(int turn,int seat,boolean extra,Set<Integer> alive){
   if(turn<=lastTurn||seat<0)return;
   lastTurn=turn;

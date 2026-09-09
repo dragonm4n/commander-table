@@ -1,5 +1,22 @@
 # Alpha 0.5 validation
 
+## Local deck and combat preview — 2026-09-09
+
+- The runnable `Commander-Table-decks-preview` package passes `DeckCatalogTest`: 12 originals and 12 separately named adaptations, all legal 100-card Commander decks. All 56 substitutions remove native AI-exclusion flags; all adapted lists have zero flagged copies. Coverage includes lands and is not measured decision accuracy.
+- `AiDecisionTest` passes 189 checks against the packaged engine. The additional 60 repeated scenarios verify Lathril attacks through zero or one Baneslayer Angel but avoids two lethal blockers. Four checks cover direct self-triggered combat rewards. The unpatched engine incorrectly declined the one-blocker attack despite menace.
+- TypeScript checking, production UI build and all 17 Node tests pass. Headless Edge checks desktop/mobile layout, Command before other zones, reduced hand dock, original/adapted selection, warning details, replacement lists and the coverage disclaimer, alongside the existing interface regressions. Screenshots were inspected; card artwork requests were disabled.
+- Original source lists and adaptation mappings ship in `server/catalog`; the five new originals come from linked Wizards decklists. Forge validates card availability, color identity, singleton rules and card counts at startup.
+- `smoke.py` passes against the final runnable package: all 24 deck/commander selections, rejection of four retired entries, two human clients and two native AIs, hidden hands/libraries, human land play, AI permanents and live host-only restart retaining credentials and decks. A new match starts in the same room.
+- This section records the latest Windows package checks; older platform and catalog statements below describe earlier builds. Full-match strategic quality and every card interaction remain unmeasured.
+
+## Local gameplay preview — 2026-09-09
+
+- `AiDecisionTest` contains 125 real-engine checks. Twenty repeated 1/1-token versus 8/8 scenarios pass at 40 life. Separate cases cover trample, flying, menace, tapped blockers, small attacks and token copies with mana abilities and damage that bypasses blockers. This is a bounded blocking heuristic, not a full-match strength benchmark.
+- `restart_ai.py` passes three consecutive early restarts of the production four-AI match.
+- `smoke.py` additionally verifies host-only restart during a live two-human match, retained credentials/decks, cleared ready flags and starting another match in the same room.
+- `spectator.py` additionally covers native monarch transfer, cast/ability announcement spacing and restarting both a finished and an active four-AI match. Runtime logs are checked for exceptions.
+- `ui-preview.cjs` additionally covers crown transfer, per-commander damage details, mobile hand/command indicators, timed card balloons surviving stack removal and restart confirmation without another host-key entry.
+
 ## Seven-precon release — alpha 0.5
 
 - The packaged server starts with exactly seven precons: Draconic Domination, Vampiric Bloodlust, Breed Lethality, Elven Empire, Undead Unleashed, Lorehold Legacies and Planar Portal. Every list passes Forge's Commander deck-conformance validation at startup.

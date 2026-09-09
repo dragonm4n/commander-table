@@ -45,12 +45,7 @@ public final class TableServer {
   GuiBase.setInterface(HeadlessPlatform.create(assets));
   System.out.println("Loading Forge cards and rules...");
   FModel.initialize(null,p->{p.setPref(FPref.UI_SELECT_FROM_CARD_DISPLAYS,false);p.setPref(FPref.PLAYER_NAME,"Commander Table");p.setPref(FPref.UI_ENABLE_SOUNDS,false);p.setPref(FPref.UI_ENABLE_MUSIC,false);p.setPref(FPref.DECKGEN_CARDBASED,false);p.setPref(FPref.UI_ENABLE_AI_CHEATS,false);p.setPref(FPref.MATCH_AI_TIMEOUT,"10");p.setPref(FPref.UI_LANGUAGE,"en-US");return null;});
-  Path precons=Paths.get(assets,"res","quest","precons");
-  for(String name:List.of("Draconic Domination","Vampiric Bloodlust","Breed Lethality","Elven Empire","Undead Unleashed","Lorehold Legacies","Planar Portal")){
-   Path p=precons.resolve(name+".dck");require(Files.isRegularFile(p),"Missing bundled precon: "+name);
-   Deck d=DeckSerializer.fromFile(p.toFile());require(d!=null&&!d.getCommanders().isEmpty(),"Invalid bundled precon: "+name);
-   String issue=GameType.Commander.getDeckFormat().getDeckConformanceProblem(d);require(issue==null,"Invalid precon "+name+": "+issue);DECKS.put(name,d);
-  }
+  DECKS.putAll(DeckCatalog.load(Paths.get(assets)));
   require(!DECKS.isEmpty(),"No Commander decks were loaded.");
   HttpServer server=HttpServer.create(new InetSocketAddress(flags.getOrDefault("--bind","127.0.0.1"),port),0);
   server.setExecutor(Executors.newFixedThreadPool(16));server.createContext("/",TableServer::handle);server.start();ready=true;
@@ -75,7 +70,7 @@ public final class TableServer {
    String method=x.getRequestMethod();String bearer=Optional.ofNullable(x.getRequestHeaders().getFirst("Authorization")).orElse("").replaceFirst("^Bearer ","");
    byte[] bytes=x.getRequestBody().readNBytes(120001);require(bytes.length<=120000,"Request is too large.");
    JsonObject body=bytes.length==0?new JsonObject():JsonParser.parseString(new String(bytes,StandardCharsets.UTF_8)).getAsJsonObject();
-   if(path.equals("/api/health")&&method.equals("GET")){send(x,200,obj("ready",ready,"engine","Forge","version","alpha-0.5","revision","53a103721d627ecb76a2ea52b2febe894844f288","decks",DECKS.entrySet().stream().map(e->obj("id",e.getKey(),"name",e.getKey(),"commander",e.getValue().getCommanders().get(0).getName())).toList()));return;}
+   if(path.equals("/api/health")&&method.equals("GET")){send(x,200,obj("ready",ready,"engine","Forge","version","alpha-0.5","revision","53a103721d627ecb76a2ea52b2febe894844f288","decks",DECKS.entrySet().stream().map(e->DeckCatalog.describe(e.getKey(),e.getValue())).toList()));return;}
    if(path.equals("/api/rooms")&&method.equals("POST")){
     if(!secure(adminKey,bearer)){send(x,403,obj("error","Invalid host key."));return;}
     String resume=str(body,"resumeKey","");require(resume.isEmpty()||resume.matches("[a-zA-Z0-9_-]{32,80}"),"Invalid rejoin key.");
@@ -108,6 +103,7 @@ public final class TableServer {
    Seat player=r.seats[seat];player.seen=System.currentTimeMillis();
    if(op.equals("state")&&method.equals("GET")){send(x,200,r.state(seat));return;}
    require(method.equals("POST"),"Invalid method.");
+   if(op.equals("restart")){require(seat==0,"Only the host can restart the table.");r.restart();send(x,200,r.state(seat));return;}
    if(op.equals("disconnect")){player.seen=0;send(x,200,obj("ok",true));return;}
    if(op.equals("leave")){synchronized(r){require(r.status.equals("lobby"),"Seats can only be released before the game starts.");if(seat==0)r.status="finished";else {player.token=null;player.resumeKey=null;player.name="AI "+(seat+1);player.ready=false;}}send(x,200,obj("ok",true));return;}
    if(op.equals("deck")){synchronized(r){require(r.status.equals("lobby"),"Decks can only be changed before the game starts.");int target=integer(body,"seat",seat);require(target>=0&&target<4&&(target==seat||(seat==0&&r.seats[target].token==null)),"You do not control this seat.");Deck d;if(body.has("list")){d=importDeck(str(body,"list",""),str(body,"commander",""));}else {String name=str(body,"deck","");require(DECKS.containsKey(name),"Deck not found.");d=DECKS.get(name);}r.seats[target].deck=d;r.seats[target].ready=true;}send(x,200,r.state(seat));return;}
@@ -140,14 +136,38 @@ public final class TableServer {
  public static final class Seat {String name;String token;String resumeKey;Deck deck;boolean ready;long seen,lastAction;RegisteredPlayer registered;WebGui gui;Set<String> processed=new LinkedHashSet<>();Seat(String n,Deck d){name=n;deck=d;}}
  public static final class Room {
   final String id=key().substring(0,10),invite=key(),name;final Seat[] seats=new Seat[4];final RoundTracker rounds=new RoundTracker();volatile String status="lobby",error="";volatile boolean aiOnly=false;HostedMatch hosted;final List<Map<String,Object>> chat=new ArrayList<>();
-  Room(String n,String player){name=clean(n,60);List<Deck> decks=new ArrayList<>(DECKS.values());for(int i=0;i<4;i++)seats[i]=new Seat(i==0?clean(player,30):"AI "+(i+1),decks.get(i%decks.size()));seats[0].token=key();seats[0].resumeKey=key();seats[0].seen=System.currentTimeMillis();}
+  Room(String n,String player){name=clean(n,60);List<Deck> decks=DECKS.entrySet().stream().filter(e->e.getKey().endsWith(" — AI adapted")).map(Map.Entry::getValue).toList();for(int i=0;i<4;i++)seats[i]=new Seat(i==0?clean(player,30):"AI "+(i+1),decks.get(i%decks.size()));seats[0].token=key();seats[0].resumeKey=key();seats[0].seen=System.currentTimeMillis();}
   Map<String,Object> session(int i){return obj("room",id,"seat",i,"token",seats[i].token,"resumeKey",seats[i].resumeKey,"invite",i==0?invite:null);}
-  Map<String,Object> state(int viewer){Map<String,Object> r=obj("id",id,"name",name,"status",status,"error",error,"mySeat",viewer,"aiOnly",aiOnly,"seats",Arrays.stream(seats).map(s->obj("name",s.name,"human",s.token!=null&&!aiOnly,"ready",s.ready,"connected",s.token!=null&&System.currentTimeMillis()-s.seen<25000,"deck",s.deck.getName(),"commander",String.join(" / ",s.deck.getCommanders().stream().map(PaperCard::getName).toList()))).toList());WebGui gui=seats[viewer].gui;if(gui!=null)r.put("game",gui.snapshot);synchronized(chat){r.put("chat",new ArrayList<>(chat));}return r;}
+  synchronized void returnToLobby(){
+   hosted=null;rounds.reset();error="";
+   for(Seat s:seats){s.gui=null;s.registered=null;s.ready=false;s.processed.clear();s.lastAction=0;}
+   status="lobby";
+  }
+  synchronized void restart(){
+   require(status.equals("playing")||status.equals("finished"),"Wait for the match to start or finish before restarting.");
+   if(status.equals("finished")){returnToLobby();return;}
+   status="restarting";final var old=hosted;final var game=old.getGame();
+   final var controllers=new ArrayList<>(old.getHumanControllers());
+   final var oldGuis=Arrays.stream(seats).map(s->s.gui).filter(Objects::nonNull).toList();
+   for(var gui:oldGuis)gui.closing=true;
+   SwingUtilities.invokeLater(()->{
+    // Mark concessions only. The engine performs zone removal/state checks on its own
+    // thread after the waiting input resumes; doing those here races AI decisions.
+    // Leave one survivor so HostedMatch closes this one-game match instead of
+    // automatically replaying an all-player draw.
+    var survivor=game.getPlayers().get(0);
+    for(var p:game.getRegisteredPlayers())if(p!=survivor)p.concede();
+    for(var controller:controllers)controller.getInputQueue().onGameOver(true);
+    for(var gui:oldGuis)gui.releaseForRestart();
+   });
+  }
+  Map<String,Object> state(int viewer){Map<String,Object> r=obj("id",id,"name",name,"status",status,"error",error,"mySeat",viewer,"aiOnly",aiOnly,"seats",Arrays.stream(seats).map(s->obj("name",s.name,"human",s.token!=null&&!aiOnly,"ready",s.ready,"connected",s.token!=null&&System.currentTimeMillis()-s.seen<25000,"deck",s.deck.getName(),"ai",DeckCatalog.coverage(s.deck),"commander",String.join(" / ",s.deck.getCommanders().stream().map(PaperCard::getName).toList()))).toList());WebGui gui=seats[viewer].gui;if(gui!=null)r.put("game",gui.snapshot);synchronized(chat){r.put("chat",new ArrayList<>(chat));}return r;}
   void start(){try{
    hosted=new HostedMatch();List<RegisteredPlayer> players=new ArrayList<>();Map<RegisteredPlayer,IGuiGame> guis=new HashMap<>();
    for(int i=0;i<4;i++){Seat s=seats[i];s.registered=RegisteredPlayer.forCommander(s.deck);if(s.token!=null&&!aiOnly){s.registered.setPlayer(new LobbyPlayerHuman(s.name+" · "+(i+1)));s.gui=new WebGui(this,i);guis.put(s.registered,s.gui);}else {LobbyPlayerAi ai=new LobbyPlayerAi(s.name+" · "+(i+1),Set.of());ai.setAiProfile("Default");s.registered.setPlayer(ai);}players.add(s.registered);}
    if(aiOnly)seats[0].gui=new WebGui(this,0);
-   hosted.setStartGameHook(()->{hosted.getGame().subscribeToEvents(new TableProgress(this));for(Seat s:seats)if(s.gui!=null){s.gui.events=new WebEvents(s.gui);hosted.getGame().subscribeToEvents(s.gui.events);}status="playing";refresh();});hosted.setEndGameHook(()->{status="finished";refresh();});
+   final var match=hosted;
+   hosted.setStartGameHook(()->{match.getGame().subscribeToEvents(new TableProgress(this));for(Seat s:seats)if(s.gui!=null){s.gui.events=new WebEvents(s.gui);match.getGame().subscribeToEvents(s.gui.events);}if(status.equals("starting"))status="playing";refresh();});hosted.setEndGameHook(()->{synchronized(this){if(hosted!=match)return;if(status.equals("restarting"))returnToLobby();else{status="finished";refresh();}}});
    GameRules rules=new GameRules(GameType.Commander);rules.setGamesPerMatch(1);rules.setAllowCheatShuffle(false);rules.setPlayForAnte(false);rules.setAISideboardingEnabled(false);
    hosted.startMatch(rules,Set.of(GameType.Commander),players,guis,null);if(status.equals("starting"))status="playing";refresh();
   }catch(Throwable e){error="Forge stopped the game: "+e.getMessage();status="error";e.printStackTrace();refresh();}}

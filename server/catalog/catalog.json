@@ -1,0 +1,159 @@
+[
+  {
+    "id": "Draconic Domination",
+    "file": "Draconic Domination.dck",
+    "bundled": true,
+    "source": "Forge bundled precon",
+    "replacements": {
+      "Crucible of the Spirit Dragon": "Secluded Courtyard",
+      "Mirror of the Forebears": "Dragon's Hoard"
+    }
+  },
+  {
+    "id": "Vampiric Bloodlust",
+    "file": "Vampiric Bloodlust.dck",
+    "bundled": true,
+    "source": "Forge bundled precon",
+    "replacements": {
+      "Boros Signet": "Talisman of Conviction",
+      "Orzhov Signet": "Talisman of Hierarchy",
+      "Rakdos Signet": "Talisman of Indulgence",
+      "Skeletal Scrying": "Night's Whisper"
+    }
+  },
+  {
+    "id": "Breed Lethality",
+    "file": "Breed Lethality.dck",
+    "bundled": true,
+    "source": "Forge bundled precon",
+    "replacements": {
+      "Bane of the Living": "Crux of Fate",
+      "Ghave, Guru of Spores": "Good-Fortune Unicorn",
+      "Golgari Signet": "Talisman of Resilience",
+      "Orzhov Signet": "Talisman of Hierarchy",
+      "Simic Signet": "Talisman of Curiosity",
+      "Cauldron of Souls": "Unbreakable Formation",
+      "Darkwater Catacombs": "Drowned Catacomb",
+      "Dreadship Reef": "Shipwreck Marsh",
+      "Sungrass Prairie": "Overgrown Farmland"
+    }
+  },
+  {
+    "id": "Elven Empire",
+    "file": "Elven Empire.dck",
+    "bundled": true,
+    "source": "Forge bundled precon",
+    "replacements": {
+      "Nullmage Shepherd": "Caustic Caterpillar",
+      "Pact of the Serpent": "Harmonize",
+      "Tergrid's Shadow": "Damnation"
+    }
+  },
+  {
+    "id": "Undead Unleashed",
+    "file": "Undead Unleashed.dck",
+    "bundled": true,
+    "source": "Forge bundled precon",
+    "replacements": {
+      "Corpse Augur": "Grim Haruspex",
+      "Darkwater Catacombs": "Shipwreck Marsh",
+      "Eater of Hope": "Ravenous Chupacabra",
+      "Hour of Eternity": "Victimize"
+    }
+  },
+  {
+    "id": "Lorehold Legacies",
+    "file": "Lorehold Legacies.dck",
+    "bundled": true,
+    "source": "Forge bundled precon",
+    "replacements": {
+      "Bosh, Iron Golem": "Cityscape Leveler",
+      "Daretti, Scrap Savant": "Goblin Engineer",
+      "Darksteel Mutation": "Generous Gift",
+      "Dispatch": "Stroke of Midnight",
+      "Faithless Looting": "Thrill of Possibility",
+      "Phyrexia's Core": "Rustvale Bridge"
+    }
+  },
+  {
+    "id": "Planar Portal",
+    "file": "Planar Portal.dck",
+    "bundled": true,
+    "source": "Forge bundled precon",
+    "replacements": {
+      "Commune with Lava": "Reckless Impulse",
+      "Hellish Rebuke": "Chain Reaction",
+      "Izzet Chemister": "Charmbreaker Devils",
+      "Rakdos Charm": "Abrade",
+      "Rakdos Signet": "Coldsteel Heart",
+      "Shadowblood Ridge": "Haunted Ridge",
+      "Throes of Chaos": "Wrenn's Resolve"
+    }
+  },
+  {
+    "id": "Veloci-Ramp-Tor",
+    "file": "Veloci-Ramp-Tor.dck",
+    "bundled": false,
+    "source": "https://magic.wizards.com/en/news/announcements/the-lost-caverns-of-ixalan-commander-decklists",
+    "sourceSha256": "359760ca80d2508a6f5aa269e5f71eaca2d25e80e12a5dad7fe711b305146903",
+    "replacements": {
+      "Marauding Raptor": "Garruk's Uprising"
+    }
+  },
+  {
+    "id": "Explorers of the Deep",
+    "file": "Explorers of the Deep.dck",
+    "bundled": false,
+    "source": "https://magic.wizards.com/en/news/announcements/the-lost-caverns-of-ixalan-commander-decklists",
+    "sourceSha256": "ef41a33ac55ab89839d724136027167d44ef0e956d88f842d8940bee86b27e63",
+    "replacements": {
+      "Curse of the Swine": "Pongify",
+      "Alchemist's Refuge": "Dreamroot Cascade",
+      "Beast Within": "Resculpt",
+      "Kiora's Follower": "Llanowar Elves",
+      "Simic Signet": "Talisman of Curiosity"
+    }
+  },
+  {
+    "id": "Blood Rites",
+    "file": "Blood Rites.dck",
+    "bundled": false,
+    "source": "https://magic.wizards.com/en/news/announcements/the-lost-caverns-of-ixalan-commander-decklists",
+    "sourceSha256": "8841cd164fd309cd1f7d77f4f5de19d2578a90c939fbd59b4b7f280f25e4529f",
+    "replacements": {
+      "Pact of the Serpent": "Read the Bones",
+      "Viscera Seer": "Vampire Aristocrat",
+      "Orzhov Signet": "Fellwar Stone"
+    }
+  },
+  {
+    "id": "Eldrazi Incursion",
+    "file": "Eldrazi Incursion.dck",
+    "bundled": false,
+    "source": "https://magic.wizards.com/en/news/announcements/modern-horizons-3-commander-decklists",
+    "sourceSha256": "d83d136377403c6e83bde02fd3a1898dcb174a9ab4dcb67c71b2e644cbdbadf2",
+    "replacements": {
+      "Selective Obliteration": "Nevinyrral's Disk",
+      "Suffer the Past": "Soul-Guide Lantern"
+    }
+  },
+  {
+    "id": "Tricky Terrain",
+    "file": "Tricky Terrain.dck",
+    "bundled": false,
+    "source": "https://magic.wizards.com/en/news/announcements/modern-horizons-3-commander-decklists",
+    "sourceSha256": "bb09adb5c4d39d60fa60840ef3582c9fae760d44d383e61d69d47ded59087012",
+    "replacements": {
+      "Magus of the Candelabra": "Arbor Elf",
+      "Blast Zone": "Field of Ruin",
+      "Summary Dismissal": "Counterspell",
+      "Flooded Grove": "Hinterland Harbor",
+      "Mirage Mirror": "Solemn Simulacrum",
+      "Overflowing Basin": "Tangled Islet",
+      "Oblivion Stone": "Nevinyrral's Disk",
+      "Curse of the Swine": "Reality Shift",
+      "Thespian's Stage": "Littjara Mirrorlake",
+      "Beast Within": "Rapid Hybridization"
+    }
+  }
+]

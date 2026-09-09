@@ -21,6 +21,9 @@ On Linux/macOS, use `bash start.sh` and, after installing cloudflared, `bash tun
 
 ## Play
 
+- The catalog contains twelve original precons and twelve separate AI adaptations. Inspect the AI coverage badge for flagged cards and the deck summary for substitutions. Coverage includes lands and measures absence of known AI-exclusion flags, not correct-decision percentage.
+- The Command zone uses a pennant on the left of the zone bar; hand, library, graveyard and exile are grouped on the right. The crown identifies the monarch.
+
 - Before starting, the host can enable **Watch 4 AIs** in the lobby. All four seats use native Forge AI; the host can choose all four decks and then watch. Human guests must release their seats first. The spectator cannot play cards or see private hands/libraries.
 - Card previews have magnifying-glass buttons and a zoom slider below the image. Enlarged art can be scrolled. Click a card's magnifier to keep its preview open.
 - **View battlefield** minimizes a large choice or zone window. Use **Return to choice** (or **Return to** the zone) to reopen it. Pending selections, their order and entered amounts are preserved.

@@ -20,6 +20,7 @@ import static table.TableServer.*;
 public final class WebGui extends BaseWebGui {
  final TableServer.Room room;final int seat;
  WebEvents events;
+ volatile boolean closing=false;
  public volatile Map<String,Object> snapshot=new LinkedHashMap<>();
  public volatile Decision prompt;public volatile int controlVersion=0;
  private volatile String message="Waiting for the game",okLabel="Confirm",cancelLabel="Cancel";
@@ -46,8 +47,10 @@ public final class WebGui extends BaseWebGui {
      List<Object> commanders=new ArrayList<>();for(PlayerView owner:knownPlayers.values())if(owner.getCommanders()!=null)for(CardView c:owner.getCommanders())commanders.add(obj("name",c.getName(),"from",room.seatFor(owner),"damage",p.getCommanderDamage(c),"casts",owner.getCommanderCast(c)));
      List<Object> mana=new ArrayList<>();for(byte color:forge.card.mana.ManaAtom.MANATYPES)mana.add(obj("color",color,"amount",p.getMana(color)));
      List<Object> statuses=new ArrayList<>();
+     var nativeGame=room.hosted==null?null:room.hosted.getGame();
+     boolean monarch=nativeGame!=null&&nativeGame.getMonarch()!=null&&nativeGame.getMonarch().getId()==p.getId();
      if(p.getKeywords()!=null)for(var keyword:p.getKeywords().getValues())statuses.add(obj("name",keyword.original(),"title",keyword.title(),"text",keyword.reminderText()));
-     players.add(obj("seat",room.seatFor(p),"id",p.getId(),"name",p.getName(),"life",p.getLife(),"lost",p.getHasLost(),"zones",zones,"mana",mana,"counters",counters(p),"commanders",commanders,"statuses",statuses,"lastAction",events==null?null:events.lastAction(room.seatFor(p))));
+     players.add(obj("seat",room.seatFor(p),"id",p.getId(),"name",p.getName(),"life",p.getLife(),"lost",p.getHasLost(),"monarch",monarch,"zones",zones,"mana",mana,"counters",counters(p),"commanders",commanders,"statuses",statuses,"lastAction",events==null?null:events.lastAction(room.seatFor(p))));
     }state.put("players",players);
     List<Object> stack=new ArrayList<>();for(StackItemView item:g.getStack()){
      Set<Map<String,Object>> targets=new LinkedHashSet<>();
@@ -105,7 +108,7 @@ public final class WebGui extends BaseWebGui {
  @Override protected void updateCurrentPlayer(PlayerView p){refresh();}
  @Override public void openView(TrackableCollection<PlayerView> p){refresh();}
  @Override public void showPromptMessage(PlayerView p,String text,CardView c){message=text;controlVersion++;refresh();}
- @Override public void updateButtons(PlayerView p,String a,String b,boolean ea,boolean eb,boolean focus){okLabel=a;cancelLabel=b;okEnabled=ea;cancelEnabled=eb;controlVersion++;refresh();}
+ @Override public void updateButtons(PlayerView p,String a,String b,boolean ea,boolean eb,boolean focus){okLabel=a;cancelLabel=b;okEnabled=ea;cancelEnabled=eb;controlVersion++;refresh();if(closing)javax.swing.SwingUtilities.invokeLater(()->{if(getGameController() instanceof forge.player.PlayerControllerHuman human)human.getInputQueue().onGameOver(true);});}
  @Override public void updateCards(Iterable<CardView> cs){refresh();}
  @Override public void updateZones(Iterable<PlayerZoneUpdate> z){refresh();}
  @Override public void refreshField(){refresh();}
@@ -117,7 +120,7 @@ public final class WebGui extends BaseWebGui {
  @Override public void updateLives(Iterable<PlayerView> p){refresh();}
  @Override public void updateManaPool(Iterable<PlayerView> p){refresh();}
  @Override public void showCombat(){refresh();}
- @Override public void finishGame(){room.status="finished";room.refresh();}
+ @Override public void finishGame(){synchronized(room){if(room.seats[seat].gui!=this)return;if(!closing&&!room.status.equals("restarting"))room.status="finished";room.refresh();}}
  @Override public void flashIncorrectAction(){message="That action is not valid right now. "+message;refresh();}
  @Override public void showErrorDialog(String msg,String title){message=title+": "+msg;refresh();}
  @Override public void message(String msg,String title){message=msg;refresh();}
@@ -129,6 +132,7 @@ public final class WebGui extends BaseWebGui {
  @Override public void clearWeaklySelectable(){super.clearWeaklySelectable();refresh();}
 
  public void action(JsonObject b){
+  require(!closing,"This match is restarting.");
   require(prompt==null,"Answer the pending choice.");require(integer(b,"controlVersion",-1)==controlVersion,"The situation changed; try again.");
   var ctl=getGameController();require(ctl!=null,"Player controls are unavailable.");String a=str(b,"action","");
   switch(a){
@@ -158,7 +162,17 @@ public final class WebGui extends BaseWebGui {
  }
  JsonObject ask(String kind,String msg,List<?> choices,int min,int max,FSerializableFunction display){
   Decision d=new Decision(this,kind,msg,choices,min,max,display);prompt=d;controlVersion++;refresh();
+  if(closing||room.status.equals("restarting"))releaseForRestart();
   try{return d.future.get();}catch(Exception e){throw new IllegalStateException("Choice interrupted.",e);}finally{if(prompt==d)prompt=null;controlVersion++;refresh();}
+ }
+ void releaseForRestart(){
+  closing=true;
+  Decision d=prompt;if(d==null)return;
+  JsonObject reply=new JsonObject();JsonArray selected=new JsonArray(),values=new JsonArray();
+  for(int i=0;i<Math.min(d.min,d.options.size());i++)selected.add(i);
+  for(int i=0;i<d.options.size();i++)values.add(i==0?d.max:0);
+  reply.add("selected",selected);reply.add("values",values);reply.addProperty("value",d.kind.equals("text")?"":String.valueOf(d.min));
+  d.future.complete(reply);
  }
  public void answer(JsonObject b){Decision d=prompt;require(d!=null&&d.id.equals(str(b,"decisionId","")),"This choice has already been answered or changed.");
   if(d.kind.equals("number")){int v=integer(b,"value",Integer.MIN_VALUE);require(v>=d.min&&v<=d.max,"Number is outside the allowed range.");}
@@ -198,13 +212,14 @@ public final class WebGui extends BaseWebGui {
    Map<CardView,Integer> result=new HashMap<>();int i=0;boolean alive=false,valid=true;
    for(JsonElement v:a.getAsJsonArray("values")){CardView c=options.get(i++);int n=v.getAsInt();result.put(c,n);if(!divide&&alive&&(!override||c==null)&&n>0)valid=false;
     if(c!=null){int lethal=Math.max(0,c.getLethalDamage());if(attacker.getCurrentState().hasDeathtouch()&&!c.getCurrentState().isPlaneswalker())lethal=Math.min(1,lethal);alive|=n<lethal;}}
+   if(closing)return Map.of();
    if(valid)return result;message="Invalid assignment: assign lethal damage before moving to the next target.";
   }
  }
  @Override public Map<Object,Integer> assignGenericAmount(CardView source,Map<Object,Integer> target,int amount,boolean atLeastOne,String label){
   if(amount<=0)return Map.of();List<Object> opts=new ArrayList<>(target.keySet());
   while(true){JsonObject a=ask("allocation",label+" — respect each target's limit",opts,atLeastOne?1:0,amount,c->String.valueOf(c)+" (max. "+(target.get(c)==null?amount:target.get(c))+")");Map<Object,Integer> out=new HashMap<>();int i=0;boolean valid=true;
-   for(JsonElement v:a.getAsJsonArray("values")){Object option=opts.get(i++);int n=v.getAsInt();if(target.get(option)!=null&&n>target.get(option))valid=false;out.put(option,n);}if(valid)return out;
+   for(JsonElement v:a.getAsJsonArray("values")){Object option=opts.get(i++);int n=v.getAsInt();if(target.get(option)!=null&&n>target.get(option))valid=false;out.put(option,n);}if(closing)return Map.of();if(valid)return out;
   }
  }
 }

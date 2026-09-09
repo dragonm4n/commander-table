@@ -14,16 +14,17 @@ public final class WebEvents {
  private final EventVisualizer sounds;
  private final Map<Integer,Map<String,Object>> actions=new LinkedHashMap<>();
  private final Deque<Map<String,Object>> audio=new ArrayDeque<>();
+ private final Map<Integer,Map<String,Object>> recent=new LinkedHashMap<>();
  private long serial=0;
  WebEvents(WebGui gui){this.gui=gui;sounds=new EventVisualizer(gui.room.seats[gui.seat].registered.getPlayer());}
- synchronized Map<String,Object> lastAction(int seat){Map<String,Object> result=null;for(var action:actions.values())if(Objects.equals(action.get("seat"),seat))result=action;return result;}
+ synchronized Map<String,Object> lastAction(int seat){if(gui.room.aiOnly){var action=recent.get(seat);return action!=null&&System.currentTimeMillis()-(long)action.get("at")<5000?action:null;}Map<String,Object> result=null;for(var action:actions.values())if(Objects.equals(action.get("seat"),seat))result=action;return result;}
  synchronized List<Map<String,Object>> sounds(){return new ArrayList<>(audio);}
  @Subscribe public void receive(GameEvent event){
   boolean changed=false;
   if(event instanceof GameEventSpellAbilityCast cast){
    int seat=gui.room.seatFor(cast.si().getActivatingPlayer());
    if(seat>=0){CardView card=cast.si().getSourceCard();String kind=cast.sa().isSpell()?"cast":cast.si().isTrigger()?"trigger":"activate";
-    synchronized(this){actions.put(cast.sa().getId(),obj("id",++serial,"seat",seat,"stackId",cast.si().getId(),"kind",kind,"card",gui.card(card,false),"text",cast.si().getText()));}changed=true;
+    synchronized(this){var action=obj("id",++serial,"at",System.currentTimeMillis(),"seat",seat,"stackId",cast.si().getId(),"kind",kind,"card",gui.card(card,false),"text",cast.si().getText());actions.put(cast.sa().getId(),action);recent.put(seat,action);}changed=true;
    }
   }
   if(event instanceof GameEventSpellResolved resolved){synchronized(this){changed|=actions.remove(resolved.spell().getId())!=null;}}
@@ -36,5 +37,15 @@ public final class WebEvents {
    }
   }
   if(changed)gui.refresh();
+  // Publish before waiting; never hold the snapshot/event locks while pacing.
+  // Only the single spectator subscriber delays the engine, never human tables.
+  if(gui.room.aiOnly){
+   long delay=event instanceof GameEventSpellAbilityCast?3000:
+       event instanceof GameEventLandPlayed||event instanceof GameEventSpellResolved?1000:
+       event instanceof GameEventTurnPhase?400:0;
+   if(delay>0){gui.refresh();long until=System.nanoTime()+delay*1_000_000;
+    while(gui.room.status.equals("playing")&&System.nanoTime()<until){try{Thread.sleep(Math.min(100,Math.max(1,(until-System.nanoTime())/1_000_000)));}catch(InterruptedException e){Thread.currentThread().interrupt();break;}}
+   }
+  }
  }
 }

@@ -51,6 +51,8 @@ public final class AiDecisionTest {
   for(int i=0;i<30;i++)check(AiAttackController.choosePreferredDefenderPlayer(ai,true)==expected,message);
  }
  static void run() {
+  attackDiagnostics();
+  blocking();
   board();weak.setLife(1,null);
   for(int i=0;i<8;i++)put(threat,"Sol Ring");
   choose(threat,"Visible resource threat should outrank an empty board at one life");
@@ -81,5 +83,58 @@ public final class AiDecisionTest {
   board();c=commander(ai,"Rafiq of the Many");threat.addCommanderDamage(c,18);
   c.setOwner(other);
   check(CommanderThreat.attackBonus(ai,threat)>=900,"Stolen commander uses its controller and individual damage history");
+ }
+ static void attackDiagnostics(){
+  for(int repetition=0;repetition<20;repetition++)for(int blockers=0;blockers<3;blockers++){
+   board();var c=commander(ai,"Lathril, Blade of the Elves");weak.setLife(35,null);
+   for(int j=0;j<blockers;j++)put(weak,"Baneslayer Angel");
+   game.getPhaseHandler().devModeSet(PhaseType.COMBAT_DECLARE_ATTACKERS,ai);
+   var combat=new forge.game.combat.Combat(ai);new AiAttackController(ai).declareAttackers(combat);
+   check(combat.isAttacking(c)==(blockers<2),"Lathril attacks through a single first-striker, respects two lethal blockers");
+  }
+  board();var c=commander(ai,"Lathril, Blade of the Elves");
+  check(CommanderThreat.hasSelfCombatReward(c,false),"Recognize Lathril's combat-damage tokens");
+  check(!CommanderThreat.hasSelfCombatReward(c,true),"Lathril requires damage, not just declaring an attack");
+  var captain=commander(ai,"Captain Lannery Storm");
+  check(CommanderThreat.hasSelfCombatReward(captain,true),"Recognize a self attack trigger creating Treasure");
+  check(!CommanderThreat.hasSelfCombatReward(put(ai,"Grizzly Bears"),true),"Vanilla creature has no extra attack reward");
+ }
+
+ static Card token(){
+  Card c=new Card(game.nextCardId(),game);c.setName("Soldier Token");c.setOwner(ai);
+  c.setGamePieceType(forge.card.GamePieceType.TOKEN);c.addType("Creature");c.addType("Soldier");c.setBasePower(1);c.setBaseToughness(1);
+  return game.getAction().moveTo(ZoneType.Battlefield,c,null,AbilityKey.newMap());
+ }
+ static forge.game.combat.Combat attack(Card attacker){
+  game.getPhaseHandler().devModeSet(PhaseType.COMBAT_DECLARE_BLOCKERS,threat);
+  var combat=new forge.game.combat.Combat(threat);combat.addAttacker(attacker,ai);return combat;
+ }
+ static void blocking(){
+  for(int i=0;i<20;i++){
+   board();var big=put(threat,"Gigantosaurus");big.setBasePower(8);big.setBaseToughness(8);var small=token();
+   var combat=attack(big);new AiBlockController(ai,false).assignBlockersForCombat(combat);
+   check(combat.getBlockers(big).contains(small),"Use a spare vanilla 1/1 token to stop an 8/8 at 40 life");
+  }
+  board();var big=put(threat,"Gigantosaurus");var small=token();big.addIntrinsicKeyword("Trample");
+  var combat=attack(big);new AiBlockController(ai,false).assignBlockersForCombat(combat);
+  check(combat.getBlockers(big).isEmpty(),"Do not spend a token for a single point against trample at 40 life");
+  board();big=put(threat,"Gigantosaurus");small=token();big.addIntrinsicKeyword("Flying");
+  combat=attack(big);new AiBlockController(ai,false).assignBlockersForCombat(combat);
+  check(combat.getBlockers(big).isEmpty(),"Ground token cannot block a flyer");
+  board();big=put(threat,"Gigantosaurus");small=token();big.addIntrinsicKeyword("Menace");
+  combat=attack(big);new AiBlockController(ai,false).assignBlockersForCombat(combat);
+  check(combat.getBlockers(big).isEmpty(),"Do not assign an illegal single blocker against menace");
+  board();big=put(threat,"Grizzly Bears");small=token();
+  combat=attack(big);new AiBlockController(ai,false).assignBlockersForCombat(combat);
+  check(combat.getBlockers(big).isEmpty(),"Preserve the token against a small hit at 40 life");
+  board();big=put(threat,"Gigantosaurus");small=token();small.setTapped(true);
+  combat=attack(big);new AiBlockController(ai,false).assignBlockersForCombat(combat);
+  check(combat.getBlockers(big).isEmpty(),"Tapped token cannot block");
+  board();big=put(threat,"Gigantosaurus");small=put(ai,"Llanowar Elves");small.setGamePieceType(forge.card.GamePieceType.TOKEN);
+  combat=attack(big);new AiBlockController(ai,false).assignBlockersForCombat(combat);
+  check(combat.getBlockers(big).isEmpty(),"Preserve a token copy with a mana ability at 40 life");
+  board();big=put(threat,"Thorn Elemental");small=token();
+  combat=attack(big);new AiBlockController(ai,false).assignBlockersForCombat(combat);
+  check(combat.getBlockers(big).isEmpty(),"Do not waste the token when damage can bypass blockers");
  }
 }

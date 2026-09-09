@@ -24,8 +24,15 @@ try:
  print('HEALTH:',health['engine'],len(health['decks']),'precons',flush=True)
  assert health['version']=='alpha-0.5',health.get('version')
  expected={'Draconic Domination':'The Ur-Dragon','Vampiric Bloodlust':'Edgar Markov','Breed Lethality':"Atraxa, Praetors' Voice",'Elven Empire':'Lathril, Blade of the Elves','Undead Unleashed':'Wilhelt, the Rotcleaver','Lorehold Legacies':'Osgir, the Reconstructor','Planar Portal':'Prosper, Tome-Bound'}
+ expected.update({'Veloci-Ramp-Tor':'Pantlaza, Sun-Favored','Explorers of the Deep':'Hakbal of the Surging Soul','Blood Rites':'Clavileño, First of the Blessed','Eldrazi Incursion':'Ulalek, Fused Atrocity','Tricky Terrain':'Omo, Queen of Vesuva'})
+ expected.update({k+' — AI adapted':v for k,v in list(expected.items())})
  assert {d['id']:d['commander'] for d in health['decks']}==expected,'Unexpected precon catalog'
- print('PASS: alpha 0.5 exposes exactly the seven requested precons and commanders',flush=True)
+ for d in health['decks']:
+  assert d['ai']['total']==100
+  if d['kind']=='adapted':assert d['ai']['flagged']==0 and d['ai']['percent']==100
+  else:assert d['kind']=='original'
+
+ print('PASS: alpha 0.5 exposes 12 original precons and 12 AI adaptations and commanders',flush=True)
  try:call('/api/rooms','incorrect-key',{})
  except AssertionError as e:assert '403' in str(e)
  else:raise AssertionError('Unauthenticated room creation was allowed')
@@ -37,7 +44,7 @@ try:
   try:call('/api/rooms/'+host['room']+'/deck',host['token'],{'deck':removed})
   except AssertionError as error:assert '400' in str(error)
   else:raise AssertionError('Removed precon is still selectable: '+removed)
- print('PASS: all seven precons selectable; all four retired entries rejected',flush=True)
+ print('PASS: all 24 decks selectable; all four retired entries rejected',flush=True)
  guest=call('/api/rooms/'+host['room']+'/join',body={'player':'Human B','invite':host['invite']})
  assert guest['seat']==1 and not guest.get('invite')
  for s in [host,guest]:call('/api/rooms/'+s['room']+'/deck',s['token'],{'deck':'Elven Empire'})
@@ -95,6 +102,22 @@ try:
   for s in [host,guest]:
    r=state(s);g=r.get('game',{});print('FINAL',s['seat'],r['status'],g.get('turn'),g.get('phase'),g.get('message'), 'players',len(g.get('players',[])),flush=True)
   raise AssertionError(f'Game did not reach expected actions: ai_played={ai_played}, human_land={human_land}')
+ # Restart during a live two-human game, retaining both credentials and decks.
+ try:call('/api/rooms/'+host['room']+'/restart',guest['token'],{})
+ except AssertionError as error:assert '400' in str(error)
+ else:raise AssertionError('Guest was allowed to restart everyone')
+ saved_decks=[s['deck'] for s in state(host)['seats']]
+ call('/api/rooms/'+host['room']+'/restart',host['token'],{})
+ for _ in range(100):
+  r=state(host)
+  if r['status']=='lobby':break
+  time.sleep(.2)
+ else:raise AssertionError('Live human match did not restart')
+ assert 'game' not in r and [s['deck'] for s in r['seats']]==saved_decks
+ assert state(guest)['status']=='lobby' and all(not s['ready'] for s in r['seats'])
+ for s in [host,guest]:call('/api/rooms/'+s['room']+'/deck',s['token'],{'deck':'Elven Empire'})
+ call('/api/rooms/'+host['room']+'/start',host['token'],{})
+ print('PASS: live human restart retains room, both credentials and decks; guest restart rejected; new match starts',flush=True)
 finally:
  process.terminate()
  try:process.wait(timeout=5)

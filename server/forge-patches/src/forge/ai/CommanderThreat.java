@@ -32,6 +32,27 @@ public final class CommanderThreat {
         return commanderPressure(opponent, ai, true);
     }
 
+    /** Recognize direct, self-triggered token/draw rewards without requiring manual SVars. */
+    public static boolean hasSelfCombatReward(Card card, boolean onAttack) {
+        if (!applies(card.getController())) return false;
+        for (var trigger : card.getTriggers()) {
+            if (onAttack) {
+                if (trigger.getMode() != forge.game.trigger.TriggerType.Attacks
+                        || !"Card.Self".equals(trigger.getParam("ValidCard"))) continue;
+            } else if (trigger.getMode() != forge.game.trigger.TriggerType.DamageDone
+                    || !"True".equals(trigger.getParam("CombatDamage"))
+                    || !"Card.Self".equals(trigger.getParam("ValidSource"))
+                    || !"Player".equals(trigger.getParam("ValidTarget"))) continue;
+            var ability = trigger.ensureAbility();
+            if (ability == null || ability.usesTargeting()) continue;
+            if (ability.getApi() == forge.game.ability.ApiType.Token
+                    && (!ability.hasParam("TokenOwner") || "You".equals(ability.getParam("TokenOwner")))) return true;
+            if (ability.getApi() == forge.game.ability.ApiType.Draw
+                    && "You".equals(ability.getParam("Defined"))) return true;
+        }
+        return false;
+    }
+
     private static int commanderPressure(Player attacker, Player defender, boolean nextTurn) {
         if (!applies(attacker) || defender.cantLoseCheck(GameLossReason.CommanderDamage)) {
             return 0;

@@ -24,6 +24,7 @@ shutil.copytree(package / 'source/forge', native)
 subprocess.run([sys.executable, str(site / 'server/apply_forge_patches.py'), str(native)], check=True)
 shutil.copytree(package / 'lib', output / 'lib')
 shutil.copytree(package / 'forge', output / 'forge')
+shutil.copytree(site / 'server/catalog', output / 'forge/res/commander-table')
 shutil.copytree(site / 'server/web', output / 'web')
 for name in ['start-windows.bat', 'start.sh', 'tunnel-windows.bat', 'tunnel.sh', 'LICENSE', 'README.md', 'VALIDATION.md']:
     shutil.copy2(site / 'server' / name, output / name)
@@ -50,7 +51,7 @@ ai = native / 'forge-ai/src/main/java/forge/ai'
 classpath = str(output / 'lib/*')
 print('Compiling the AI overlay and Java bridge...', flush=True)
 subprocess.run(['javac', '-encoding', 'UTF-8', '-cp', classpath, '-d', str(ai_classes),
-                *[str(ai / name) for name in ['AiAttackController.java', 'ComputerUtil.java', 'CommanderThreat.java']]], check=True)
+                *[str(ai / name) for name in ['AiAttackController.java', 'AiBlockController.java', 'ComputerUtil.java', 'CommanderThreat.java']]], check=True)
 subprocess.run(['jar', '--update', '--file', str(output / 'lib/forge-ai-2.0.15-SNAPSHOT.jar'), '-C', str(ai_classes), '.'], check=True)
 subprocess.run(['javac', '-encoding', 'UTF-8', '-cp', classpath, '-d', str(bridge_classes),
                 *map(str, (site / 'server/src/main/java/table').glob('*.java'))], check=True)

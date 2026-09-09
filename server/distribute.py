@@ -16,6 +16,7 @@ dest.mkdir(parents=True)
 shutil.copy2(forge/'forge-web/target/forge-web-2.0.15-SNAPSHOT.jar',dest/'commander-table.jar')
 shutil.copytree(forge/'forge-web/target/lib',dest/'lib',dirs_exist_ok=True)
 shutil.copytree(forge/'forge-gui/res',dest/'forge/res',dirs_exist_ok=True)
+shutil.copytree(site/'server/catalog',dest/'forge/res/commander-table',dirs_exist_ok=True)
 shutil.copytree(site/'server/web',dest/'web',dirs_exist_ok=True)
 shutil.copy2(site/'server/support/forge.profile.properties',dest/'forge/forge.profile.properties')
 for name in ['start-windows.bat','start.sh','tunnel-windows.bat','tunnel.sh','README.md','VALIDATION.md','LICENSE']:

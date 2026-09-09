@@ -17,6 +17,7 @@ Current feature release: **alpha 0.5**. Independent project, unaffiliated with W
 - Zoomable card previews, minimizable choices, own-turn confirmation and visible defeat/victory notices.
 - Scryfall card/token art, bundled Forge sounds, chat and game history.
 - Deck import, reusable browser-saved lists and JSON backups.
+- Twelve original precons and twelve separate AI adaptations, with visible substitutions and a percentage of cards without known Forge AI-exclusion flags. This percentage is not measured piloting accuracy.
 
 ## Source layout
 
