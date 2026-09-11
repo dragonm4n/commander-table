@@ -1,4 +1,4 @@
-# Commander Table — alpha 0.5
+# Commander Table — alpha 0.6
 
 A four-seat web Commander table powered by Forge's rules engine and native AI. The host runs the Java server; guests only need a browser. This package includes the web interface, served by the same program.
 
@@ -21,6 +21,23 @@ On Linux/macOS, use `bash start.sh` and, after installing cloudflared, `bash tun
 
 ## Play
 
+- Tutor balloons show the chosen card and destination when that information is public; private choices remain hidden to opponents. Modal actions include their selected modes.
+- Scry opens a choice window. Use **View battlefield** to inspect the table, then return to finish the choice. Optional taxes explicitly offer **Pay** and **Don't pay**.
+- Small animations above Hand, Graveyard and Exile show arrivals. Linked exile beneath a permanent is reserved for future interactions with those cards.
+
+- A spiral marks creatures with summoning sickness. It disappears when Forge clears that restriction, including when the creature has haste.
+- For automatic deck tests, enable **Watch 4 AIs**, choose the four decks, customize the AI names and enable **Run consecutive AI games**. Choose 1–100 games and optionally **Fast testing** to remove presentation delays, then start the series.
+- Open **AI series · Results** to see wins by AI and deck, draws and each game's result, or export JSON. A repeated deck counts once per seat per game in its appearances. **Stop after current game** records the ongoing game's result and prevents another game; **Restart** interrupts it without awarding a win.
+- Series run on the server without requiring an open browser. Keep Java running. Results survive returning to the lobby but are replaced by a new run and are not persisted through a Java restart.
+
+- **No interaction**, in the action dock, automatically passes your priority during AI turns while checked. It switches off automatically when any human turn begins. Required choices, including blockers, always wait for you. Uncheck at any time to resume manual priority. Each human controls their own switch; the browser must stay connected.
+- Combat notices float over the table instead of changing battlefield size. Close a notice with its X; the next combat declaration step shows a new notice.
+
+- Use the magnifier to inspect a card; hovering does not open the inspector. Cards exiled with a permanent appear beneath it, with a linked-card button to inspect the group. Face-down cards remain hidden when Forge does not permit you to see them.
+- During combat, use the defender buttons and outlined player field before choosing attackers. Attacker and blocker declaration each have a dedicated instruction strip.
+- The targeting panel identifies the source and allowed target count. If you attempt to continue with zero optional targets, confirm that choice explicitly. Spell/ability announcements also appear in human games without blocking battlefield clicks.
+- The expanded deck picker supports searching by deck or commander, filtering originals/adaptations and reading the entire main-deck list.
+
 - The catalog contains twelve original precons and twelve separate AI adaptations. Inspect the AI coverage badge for flagged cards and the deck summary for substitutions. Coverage includes lands and measures absence of known AI-exclusion flags, not correct-decision percentage.
 - The Command zone uses a pennant on the left of the zone bar; hand, library, graveyard and exile are grouped on the right. The crown identifies the monarch.
 
@@ -42,7 +59,7 @@ On Linux/macOS, use `bash start.sh` and, after installing cloudflared, `bash tun
 - When choosing a stack target, select the highlighted item or its thumbnail option, then **Confirm target**. Use **Cancel selection** when cancellation is allowed.
 - Gold arrows indicate declared targets; blue arrows indicate blocks as you assign them, before confirmation. A blocked attack's red arrow points to each assigned blocker; removing all blockers restores the arrow to its original defender. This is a visual aid, not a change to damage or trample rules. Toggle them with **Arrows**. Effects without targets do not create target arrows.
 - Use the zone buttons for the command zone, graveyard, exile and authorized library reveals. Other players' hands and hidden library cards stay private.
-- Hover over a card, or click its magnifying glass, to inspect it. Inside a library or token/attachment window, the preview appears within that window.
+- Click a card's magnifying glass to inspect it. Inside a library or token/attachment window, the preview appears within that window.
 - Open **Stack**, **Chat** and **History** from the top bar. Enable **Sound** to hear the bundled Forge effects; click again to mute.
 - Follow Forge's prompts for attacks, blockers, damage assignment and ordering. This is an automated rules engine, not a freeform card table.
 

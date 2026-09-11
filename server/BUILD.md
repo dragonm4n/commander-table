@@ -4,7 +4,7 @@ Requirements: Java/JDK 17+, Maven 3.9+, Python 3 and Git. The interface requires
 
 1. Clone https://github.com/Card-Forge/forge and check out `53a103721d627ecb76a2ea52b2febe894844f288`.
 2. Copy this `server` directory into `forge-web` at the Forge root. Java sources and `pom.xml` are sufficient for compilation; do not copy distribution archives or local profiles back into the build.
-3. Apply the Commander Table AI overlay with `python server/apply_forge_patches.py PATH_TO_FORGE` from this project. It validates expected source fragments and supports repeated application. In Forge's root `pom.xml`, replace the module list with `forge-core`, `forge-game`, `forge-ai`, `forge-gui`, `forge-web`. Keep the other upstream configuration.
+3. Apply the Commander Table AI, rules-event and match-lifecycle overlay with `python server/apply_forge_patches.py PATH_TO_FORGE` from this project. It validates expected source fragments and supports repeated application. In Forge's root `pom.xml`, replace the module list with `forge-core`, `forge-game`, `forge-ai`, `forge-gui`, `forge-web`. Keep the other upstream configuration.
 4. From the Forge root, run:
 
 ```sh
@@ -14,7 +14,7 @@ mvn -B -pl forge-web -am package -Dmaven.test.skip=true -Dcheckstyle.skip=true
 5. From the UI project root, run `npm ci` and `npx vite build --config vite.standalone.config.ts`. This writes the static interface into `server/web`.
 6. Commit the project source so the distribution script includes every authored file, then run `python server/distribute.py PATH_TO_FORGE NEW_OUTPUT_DIRECTORY`.
 
-The output is `Commander-Table-alpha-0.5.zip`. The output directory must not already contain a `Commander-Table` folder. It includes `commander-table.jar`, dependency JARs, resources, web files, English launchers and corresponding source. To assemble manually, copy the bridge JAR from `forge-web/target`, its `lib` folder, Forge's `forge-gui/res` into `forge/res`, and `server/web` into `web` beside the JAR. Also copy `support/forge.profile.properties` into `forge`, plus the launchers, README, validation notes and license. Start with `java -Xmx3G -jar commander-table.jar --assets forge --port 8787`.
+The output is `Commander-Table-alpha-0.6.zip`. The output directory must not already contain a `Commander-Table` folder. It includes `commander-table.jar`, dependency JARs, resources, web files, English launchers and corresponding source. To assemble manually, copy the bridge JAR from `forge-web/target`, its `lib` folder, Forge's `forge-gui/res` into `forge/res`, and `server/web` into `web` beside the JAR. Also copy `support/forge.profile.properties` into `forge`, plus the launchers, README, validation notes and license. Start with `java -Xmx3G -jar commander-table.jar --assets forge --port 8787`.
 
 ## Rebuild from the runnable package's source
 

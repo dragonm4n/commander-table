@@ -22,7 +22,7 @@ try:
   except (OSError,AssertionError):time.sleep(.3)
  else:raise RuntimeError('Forge did not become ready')
  print('HEALTH:',health['engine'],len(health['decks']),'precons',flush=True)
- assert health['version']=='alpha-0.5',health.get('version')
+ assert health['version']=='alpha-0.6',health.get('version')
  expected={'Draconic Domination':'The Ur-Dragon','Vampiric Bloodlust':'Edgar Markov','Breed Lethality':"Atraxa, Praetors' Voice",'Elven Empire':'Lathril, Blade of the Elves','Undead Unleashed':'Wilhelt, the Rotcleaver','Lorehold Legacies':'Osgir, the Reconstructor','Planar Portal':'Prosper, Tome-Bound'}
  expected.update({'Veloci-Ramp-Tor':'Pantlaza, Sun-Favored','Explorers of the Deep':'Hakbal of the Surging Soul','Blood Rites':'Clavileño, First of the Blessed','Eldrazi Incursion':'Ulalek, Fused Atrocity','Tricky Terrain':'Omo, Queen of Vesuva'})
  expected.update({k+' — AI adapted':v for k,v in list(expected.items())})
@@ -32,7 +32,7 @@ try:
   if d['kind']=='adapted':assert d['ai']['flagged']==0 and d['ai']['percent']==100
   else:assert d['kind']=='original'
 
- print('PASS: alpha 0.5 exposes 12 original precons and 12 AI adaptations and commanders',flush=True)
+ print('PASS: alpha 0.6 exposes 12 original precons and 12 AI adaptations and commanders',flush=True)
  try:call('/api/rooms','incorrect-key',{})
  except AssertionError as e:assert '403' in str(e)
  else:raise AssertionError('Unauthenticated room creation was allowed')
@@ -49,7 +49,7 @@ try:
  assert guest['seat']==1 and not guest.get('invite')
  for s in [host,guest]:call('/api/rooms/'+s['room']+'/deck',s['token'],{'deck':'Elven Empire'})
  call('/api/rooms/'+host['room']+'/start',host['token'],{})
- ai_played=False;human_land=False;seen_decisions=set();actions=0;seen=[]
+ auto_passes=0;ai_played=False;human_land=False;seen_decisions=set();actions=0;seen=[]
  until=time.time()+100
  while time.time()<until:
   for s in [host,guest]:
@@ -57,6 +57,7 @@ try:
    assert r['status']!='error',r.get('error')
    g=r.get('game',{})
    if not g.get('players'):continue
+   if r['seats'][g.get('activeSeat',0)]['human'] or g.get('decision'):assert not g.get('canAutoPass'), 'Auto-pass must stop at humans and choices'
    for p in g['players']:
     if p['seat']!=s['seat']:assert p['zones']['Hand']['cards']==[], 'PRIVATE HAND LEAK'
     assert p['zones']['Library']['cards']==[], 'PRIVATE LIBRARY LEAK'
@@ -87,14 +88,17 @@ try:
     if not verb and 'discard' in g.get('message','').lower():
      discard=next((c for c in own['zones']['Hand']['cards'] if c.get('selectable') and not c.get('selected')),None)
      if discard:verb={'action':'card','cardId':discard['id']}
-    if not verb and g.get('ok',{}).get('enabled'):verb={'action':'ok'}
+    if not verb and g.get('ok',{}).get('enabled'):
+     verb={'action':'passAI' if g.get('canAutoPass') else 'ok'}
+     if g.get('canAutoPass'):auto_passes+=1
     elif not verb and g.get('cancel',{}).get('enabled'):verb={'action':'cancel'}
     human_land=human_land or any(c.get('land') for c in own['zones']['Battlefield']['cards'])
    if verb:
     try:action(s,g,**verb);actions+=1
     except AssertionError as e:
      if not any(x in str(e) for x in ['changed','update','Wait','choice','answered']):print('ACTION ERROR',str(e)[:250],flush=True)
-  if ai_played and human_land:
+  if ai_played and human_land and auto_passes>0:
+   print('PASS: AI-only automatic priority passes:',auto_passes,flush=True)
    print('PASS: two human clients + two native AIs; private hands/libraries; human land play; AI permanents;',actions,'actions',flush=True)
    break
   time.sleep(.35)

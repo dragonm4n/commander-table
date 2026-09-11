@@ -1,5 +1,5 @@
 import type {Card,Player} from './table';
-export type PermanentPile={root:Card;attachments:Card[];members:Card[]};
+export type PermanentPile={root:Card;attachments:Card[];members:Card[];exiled:Card[]};
 function tokenKey(card:Card){
  const counters=Object.entries(card.counters??{}).sort(([a],[b])=>a.localeCompare(b));
  return JSON.stringify([card.name,card.imageName,card.tokenImages,card.type,card.text,card.mana,card.power,card.toughness,card.loyalty,!!card.tapped,!!card.sick,card.damage??0,counters,!!card.attacking,!!card.blocking,!!card.transformed,card.controllerSeat,!!card.selected,!!card.selectable,!!card.actionable]);
@@ -12,8 +12,9 @@ export function battlefieldPiles(players:Player[]):Map<number,PermanentPile[]> {
  const add=(card:Card,seat:number)=>{
   const family:Card[]=[],seen=new Set([card.id]);
   const walk=(id:number)=>{for(const child of children.get(id)??[])if(!seen.has(child.id)){seen.add(child.id);attached.add(child.id);family.push(child);walk(child.id);}};walk(card.id);
-  const pile={root:card,attachments:family,members:[card]};
-  const key=card.token&&!card.hidden&&!card.attachedTo&&!family.length?seat+'|'+tokenKey(card):null;
+  const exiled=players.flatMap(p=>p.zones.Exile?.cards??[]).filter(c=>c.exiledWith?.id===card.id);
+  const pile={root:card,attachments:family,members:[card],exiled};
+  const key=card.token&&!card.hidden&&!card.attachedTo&&!family.length&&!exiled.length?seat+'|'+tokenKey(card):null;
   if(key&&grouped.has(key)){grouped.get(key)!.members.push(card);return;}
   if(key)grouped.set(key,pile);
   piles.set(seat,[...(piles.get(seat)??[]),pile]);

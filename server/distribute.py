@@ -10,6 +10,15 @@ if not (forge/'forge-ai/src/main/java/forge/ai/CommanderThreat.java').is_file():
 with zipfile.ZipFile(forge/'forge-web/target/lib/forge-ai-2.0.15-SNAPSHOT.jar') as ai_jar:
  if 'forge/ai/CommanderThreat.class' not in ai_jar.namelist():
   raise SystemExit('The AI dependency was not rebuilt with the Commander Table overlay.')
+with zipfile.ZipFile(forge/'forge-web/target/lib/forge-gui-2.0.15-SNAPSHOT.jar') as gui_jar:
+ if b'setAutoContinue' not in gui_jar.read('forge/gamemodes/match/HostedMatch.class'):
+  raise SystemExit('Rebuild forge-gui with the controlled-match lifecycle overlay.')
+with zipfile.ZipFile(forge/'forge-web/target/lib/forge-game-2.0.15-SNAPSHOT.jar') as game_jar:
+ if 'forge/game/event/GameEventTutorChoice.class' not in game_jar.namelist():
+  raise SystemExit('Rebuild forge-game with the alpha 0.6 tutor and Myriad overlay.')
+with zipfile.ZipFile(forge/'forge-web/target/lib/forge-ai-2.0.15-SNAPSHOT.jar') as ai_jar:
+ if b'neededLand' not in ai_jar.read('forge/ai/CommanderThreat.class'):
+  raise SystemExit('Rebuild forge-ai with the alpha 0.6 colored-mana overlay.')
 if dest.exists():
  raise SystemExit('Choose a fresh output directory to avoid including files from an older build.')
 dest.mkdir(parents=True)
@@ -38,7 +47,7 @@ for name in files:
   d=ui/name;d.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,d)
 # The standalone build emits to server/web and needs an existing parent only.
 (ui/'server').mkdir(exist_ok=True)
-archive=out/'Commander-Table-alpha-0.5.zip'
+archive=out/'Commander-Table-alpha-0.6.zip'
 with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as z:
  for p in sorted(dest.rglob('*')):
   if p.is_file() and 'profile' not in p.relative_to(dest).parts:z.write(p,p.relative_to(out))

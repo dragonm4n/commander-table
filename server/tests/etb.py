@@ -74,7 +74,7 @@ try:
  else:raise AssertionError('Fixture not installed')
  assert not protection(g,3),'Uncast Ring gave protection'
  print('PASS: entering The One Ring without casting gives no protection',flush=True)
- stage='ring';started=set();ring_trigger=False;token_trigger=False;seen_targets=set();initial_turn=g['turn'];last='';protected_attempt=False;attack_step=0;block_step=0
+ stage='angel';angel_choice=False;angel_targets=set();started=set();ring_trigger=False;token_trigger=False;seen_targets=set();initial_turn=g['turn'];last='';protected_attempt=False;attack_step=0;block_step=0
  deadline=time.time()+160
  while time.time()<deadline:
   g=state(host)
@@ -90,6 +90,12 @@ try:
    if 'golem' in item['text'].lower():token_trigger=True
    for target in item.get('targets',[]):seen_targets.add(target['kind'])
   idle=not g.get('stack') and not g.get('decision') and g.get('ok',{}).get('enabled') and g.get('activeSeat')==0
+  if stage=='angel':
+   d=g.get('decision')
+   if g.get('targeting',{}).get('source',{}).get('name')=='Angel of the Ruins':
+    assert g['targeting']['min']==0 and g['targeting']['max']==2;angel_choice=True
+   if angel_choice and len(angel_targets)==2 and not any(c['name'] in ['Sol Ring','Arcane Signet'] for c in cards(g,2)):
+    print('PASS: Angel up-to-two ETB exports source and bounds and exiles two selected artifacts',flush=True);stage='ring'
   if stage=='ring' and protection(g,0):
    assert ring_trigger,'No Ring triggered ability was observed';print('PASS: cast Ring -> ETB stack -> visible protection',flush=True);stage='splicer'
   if stage=='splicer' and any(c.get('token') and c.get('power')==3 and c.get('toughness')==3 for c in cards(g,0)):
@@ -122,11 +128,16 @@ try:
     assert all(view['phase']=='COMBAT_DECLARE_BLOCKERS' for view in views)
    print('PASS: provisional blocker add/remove/re-add reaches all four seats before confirmation',flush=True);break
   if stage not in ['expiry','combat']:assert g['turn']==initial_turn,'Spell was not completed: '+stage
-  if stage in ['ring','splicer','bolt_player','bolt_card'] and stage not in started and idle:
-   name={'ring':'The One Ring','splicer':'Blade Splicer','bolt_player':'Lightning Bolt','bolt_card':'Lightning Bolt'}[stage]
+  if stage in ['angel','ring','splicer','bolt_player','bolt_card'] and stage not in started and idle:
+   name={'angel':'Angel of the Ruins','ring':'The One Ring','splicer':'Blade Splicer','bolt_player':'Lightning Bolt','bolt_card':'Lightning Bolt'}[stage]
    c=next(c for c in cards(g,0,'Hand') if c['name']==name)
    if act(host,g,action='card',cardId=c['id']) is not None:started.add(stage);print('CAST',stage,name,flush=True)
    time.sleep(.2);continue
+  if stage=='angel' and stage in started and not g.get('decision') and 'target' in g.get('message','').lower() and 'Priority:' not in g.get('message',''):
+   target=next((c for c in cards(g,2) if c['name'] in ['Sol Ring','Arcane Signet'] and c['id'] not in angel_targets),None)
+   if target:
+    if act(host,g,action='card',cardId=target['id']) is not None:angel_targets.add(target['id'])
+    time.sleep(.15);continue
   if stage.startswith('bolt_') and stage in started and not g.get('decision') and ('target' in g.get('message','').lower()) and not g.get('stack'):
    if stage=='bolt_player':
     if not protected_attempt:

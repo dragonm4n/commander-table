@@ -1,4 +1,43 @@
+# Alpha 0.6 validation
+
+- Production UI build and TypeScript checking pass; all 18 browser-logic tests pass.
+- `AiDecisionTest` passes 208 native assertions: existing threat/attack/block checks, missing commander colors, repeated colored pips, native land tutor selection, bounded commander/Elf strategy preferences, preservation value, and Myriad copies/defenders after an opponent concedes.
+- `choices.py` with `ChoicesScenarioServer` casts Opt, Preordain, Cultivate, Demonic Tutor and Boros Charm through real human controllers and HTTP. It verifies scry 1/2, pay and decline choices for Rhystic Study, public versus private tutor announcements, and the chosen indestructible mode.
+- `etb.py` passes native cast/ETB, optional target bounds, protection, damage and provisional blockers. Its fixture also verifies hideaway visibility, omission of incidental exile links, inclusion of return-on-leaving links, and tutor identity permissions.
+- `smoke.py` passes catalog/version checks, two humans plus two AIs, private zones, automatic priority and authenticated restart.
+- Compiled Edge checks cover the English switch, automatic disabling at a human turn, the scry window and return flow, zone arrivals, sickness indicator, and existing desktop/mobile regressions. No browser exceptions were reported. Remote artwork is stubbed in the visual test.
+- These tests validate specific decisions and rules/UI flows; they do not establish general AI piloting accuracy or improved match win rates. Commander strategy preferences use existing Forge deck hints, and exile grouping uses recognized native relationships and ability references.
+
+Previous validation history follows.
+
+---
+
 # Alpha 0.5 validation
+
+## Local AI-series preview
+
+- `AiSeriesTest` checks duplicate result suppression, draws, aggregation when the same deck occupies two seats, stopping after the current result, and excluding an interrupted game's artificial concession winner.
+- `ai_series.py` with `SeriesScenarioServer` exercises three native games with deterministic outcomes: seat 1 wins, a draw, then seat 2 wins. It verifies custom names, exact game count, no unrequested native draw replay, per-seat totals, retained results in the lobby, and stop/interruption behavior. These forced-outcome fixtures test lifecycle/accounting, not strategic win rates.
+- `smoke.py` still passes a normal two-human/two-AI match, automatic priority, private zones and live restart against the new HostedMatch lifecycle overlay.
+- `restart_ai.py` passes three successive early restarts of ordinary four-AI matches, retaining the same authenticated lobby.
+- Compiled Edge checks cover the summoning-sickness badge, series setup and submitted names/count/speed, the results table and JSON download, alongside previous interface regressions. TypeScript and production builds pass. Screenshots disable remote artwork requests.
+- The run is bounded to 100 games, but there is no turn/time cutoff for a game that never ends. The host can stop future games or interrupt the current one. Results live in server memory and should be exported before starting another run or restarting Java.
+
+## Local automatic-priority preview
+
+- Compiled Edge regression verifies identical battlefield position and dimensions before and during the combat popup. The notice is dismissible and leaves the battlefield layout intact.
+- Browser checks verify marking Sem interação sends automatic passes during an AI turn, unmarking stops scheduled passes, and a human turn does not pass automatically. The switch remains independent of the normal action buttons' busy state.
+- `smoke.py` uses the actual `passAI` action in a two-human/two-AI match and checks auto-pass is unavailable during human turns or pending decisions; the match progresses and live restart still passes.
+- The native guard accepts only a current-version ordinary InputPassPriority OK input in an AI turn. It cannot confirm targets, blockers, optional abilities, or Forge's longer-term yield suggestions. Automatic passing is per browser/seat and does not transfer the human deck to AI control.
+
+## Local interaction preview — 2026-09-10
+
+- `AiDecisionTest` passes 197 native checks. New Akroma's Will scenarios cover empty/quiet boards, no attackers, low-impact attacks, lethal damage, a meaningful attacking board and postcombat. A native Charm AI call verifies the timing gate is actually used. Existing 189 threat/attack/block checks pass. The gate retains native removal/mode evaluation; it does not measure match strength or solve every mass-pump spell.
+- `etb.py` with `ScenarioServer` passes a real Angel of the Ruins cast, source-aware 0–2 target selection and exile of both selected artifacts, then the existing protection, token, damage and provisional-blocker add/remove/re-add regressions. Fixture mana was expanded to accommodate the extra seven-mana spell. Native face-down linked-exile projection preserves its source ID without exposing card text or artwork to another player.
+- `smoke.py` passes against the runnable interaction package: all 24 catalog choices, private zones, human and AI play, host-only live restart and a second match in the same room.
+- All 18 Node tests pass, including linked exile grouping and missing-source behavior. TypeScript and the production build pass.
+- `ui-preview.cjs` passes compiled Edge checks for explicit-only inspection, larger dock, attack/block guides, selected defender, source-backed optional choices, confirmation before zero targets, normal-mode nonblocking queued announcements and the searchable deck catalog. Existing turn, zoom, minimized-choice, monarch, damage, restart and outcome checks remain covered. Desktop/mobile screenshots are inspected with artwork requests disabled.
+- Automatic announcement queues are bounded: the server keeps up to 64 recent public events for 15 seconds and each player's browser queue holds up to 12. Ordinary announcements display for four seconds each; this is not durable replay after disconnect. Hidden card identities remain governed by Forge.
 
 ## Local deck and combat preview — 2026-09-09
 

@@ -50,9 +50,18 @@ bridge_classes.mkdir(parents=True, exist_ok=True)
 ai = native / 'forge-ai/src/main/java/forge/ai'
 classpath = str(output / 'lib/*')
 print('Compiling the AI overlay and Java bridge...', flush=True)
+game_classes = build / 'game'
+game_classes.mkdir()
+subprocess.run(['javac', '-encoding', 'UTF-8', '-cp', classpath, '-d', str(game_classes),
+    *[str(native / 'forge-game/src/main/java/forge/game' / name) for name in ['event/GameEventTutorChoice.java', 'ability/effects/ChangeZoneEffect.java', 'ability/effects/CopyPermanentEffect.java']]], check=True)
+subprocess.run(['jar', '--update', '--file', str(output / 'lib/forge-game-2.0.15-SNAPSHOT.jar'), '-C', str(game_classes), '.'], check=True)
 subprocess.run(['javac', '-encoding', 'UTF-8', '-cp', classpath, '-d', str(ai_classes),
-                *[str(ai / name) for name in ['AiAttackController.java', 'AiBlockController.java', 'ComputerUtil.java', 'CommanderThreat.java']]], check=True)
+                *[str(ai / name) for name in ['AiAttackController.java', 'AiBlockController.java', 'ComputerUtil.java', 'CommanderThreat.java', 'ComputerUtilAbility.java', 'ComputerUtilCard.java', 'ability/ChangeZoneAi.java', 'ability/CharmAi.java']]], check=True)
 subprocess.run(['jar', '--update', '--file', str(output / 'lib/forge-ai-2.0.15-SNAPSHOT.jar'), '-C', str(ai_classes), '.'], check=True)
+gui_classes = build / 'gui'
+gui_classes.mkdir()
+subprocess.run(['javac', '-encoding', 'UTF-8', '-cp', classpath, '-d', str(gui_classes), str(native / 'forge-gui/src/main/java/forge/gamemodes/match/HostedMatch.java'), str(native / 'forge-gui/src/main/java/forge/player/PlayerControllerHuman.java')], check=True)
+subprocess.run(['jar', '--update', '--file', str(output / 'lib/forge-gui-2.0.15-SNAPSHOT.jar'), '-C', str(gui_classes), '.'], check=True)
 subprocess.run(['javac', '-encoding', 'UTF-8', '-cp', classpath, '-d', str(bridge_classes),
                 *map(str, (site / 'server/src/main/java/table').glob('*.java'))], check=True)
 manifest = build / 'MANIFEST.MF'

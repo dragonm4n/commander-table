@@ -2,7 +2,7 @@
 
 A four-seat web Commander table powered by the [Forge](https://github.com/Card-Forge/forge) rules engine and native AI. The host runs a Java server; guests connect in a browser. Empty seats are filled by Forge AI when the game begins.
 
-Current feature release: **alpha 0.5**. Independent project, unaffiliated with Wizards of the Coast, Forge, EDHLab or Scryfall.
+Current feature release: **alpha 0.6**. Independent project, unaffiliated with Wizards of the Coast, Forge, EDHLab or Scryfall.
 
 ## Features
 
@@ -49,9 +49,9 @@ node --experimental-strip-types --test lib/*.test.mjs
 npx vite build --config vite.standalone.config.ts
 ```
 
-The standalone build writes `server/web`. Use an **alpha 0.5 Java server** while developing the interface; older bridges do not provide the new attachment, library-choice or recovery metadata. In this GitHub checkout, `npm run dev`, `npm run build`, `npm run typecheck` and `npm test` provide the equivalent standalone commands.
+The standalone build writes `server/web`. Use an **alpha 0.6 Java server** while developing the interface; older bridges do not provide the new attachment, library-choice or recovery metadata. In this GitHub checkout, `npm run dev`, `npm run build`, `npm run typecheck` and `npm test` provide the equivalent standalone commands.
 
-Follow [server/BUILD.md](server/BUILD.md) to build the bridge. With source files committed, `python server/distribute.py PATH_TO_FORGE NEW_OUTPUT_DIRECTORY` creates the runnable `Commander-Table-alpha-0.5.zip`, including corresponding source.
+Follow [server/BUILD.md](server/BUILD.md) to build the bridge. With source files committed, `python server/distribute.py PATH_TO_FORGE NEW_OUTPUT_DIRECTORY` creates the runnable `Commander-Table-alpha-0.6.zip`, including corresponding source.
 
 ## API and session behavior
 

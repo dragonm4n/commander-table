@@ -11,6 +11,89 @@ import forge.game.player.Player;
 public final class CommanderThreat {
     private CommanderThreat() { }
 
+    /** Compare colored pips in our hand/command zone with our own mana sources. */
+    public static Card neededLand(Player ai, java.util.List<Card> candidates) {
+        if (!applies(ai)) return null;
+        java.util.Map<String,Integer> demand = new java.util.HashMap<>();
+        var plans = forge.game.card.CardCollection.combine(ai.getCardsIn(forge.game.zone.ZoneType.Hand), ai.getCardsIn(forge.game.zone.ZoneType.Command));
+        for (Card plan : plans) {
+            if (plan.isLand()) continue;
+            java.util.Map<String,Integer> pips = new java.util.HashMap<>();
+            for (var shard : plan.getManaCost()) for (var color : shard.getColor()) {
+                if (color == forge.card.MagicColor.Color.COLORLESS) continue;
+                pips.merge(color.getBasicLandType(), 1, Integer::sum);
+            }
+            for (var entry : pips.entrySet()) {
+                int sources = 0;
+                for (Card available : ai.getCardsIn(forge.game.zone.ZoneType.Battlefield))
+                    if (produces(available, entry.getKey())) sources++;
+                for (Card available : ai.getCardsIn(forge.game.zone.ZoneType.Hand))
+                    if (available.isLand() && produces(available, entry.getKey())) sources++;
+                int missing = Math.max(0, entry.getValue() - sources);
+                demand.merge(entry.getKey(), missing * (plan.isCommander() ? 6 : 3), Integer::sum);
+            }
+        }
+        Card best = null; int score = 0;
+        for (Card candidate : candidates) {
+            int value = 0;
+            for (var entry : demand.entrySet()) if (produces(candidate, entry.getKey())) value += entry.getValue();
+            if (value > score) { best = candidate; score = value; }
+        }
+        return best; // Native balancing/dual-land logic handles ties with no unmet demand.
+    }
+
+    private static boolean produces(Card card, String basic) {
+        if (card.getType().hasSubtype(basic)) return true;
+        String symbol = switch(basic) {case "Plains" -> "W"; case "Island" -> "U"; case "Swamp" -> "B"; case "Mountain" -> "R"; case "Forest" -> "G"; default -> "C";};
+        for (var mana : card.getManaAbilities()) if (mana.getManaPart() != null && mana.getManaPart().canProduce(symbol, mana)) return true;
+        return false;
+    }
+
+    public static int commanderPriority(forge.game.spellability.SpellAbility sa) {
+        Card c = sa.getHostCard();
+        if (c == null || !applies(c.getController()) || !sa.isSpell()) return 0;
+        // A bounded preference; native legality, emergency responses and cost checks remain in charge.
+        if (c.isCommander()) return 3;
+        // Use Forge's explicit deck-synergy metadata, rather than guessing from card names.
+        if (c.getPaperCard() instanceof forge.item.PaperCard paper) {
+            for (Card commander : forge.game.card.CardCollection.combine(
+                    c.getController().getCardsIn(forge.game.zone.ZoneType.Command),
+                    c.getController().getCardsIn(forge.game.zone.ZoneType.Battlefield))) {
+                if (!commander.isCommander() || commander.getRules() == null) continue;
+                var hints = commander.getRules().getAiHints().getDeckHints();
+                if (hints != null && hints.filter(java.util.List.of(paper)).iterator().hasNext()) return 1;
+            }
+        }
+        return 0;
+    }
+
+    /** Save this four-mana instant for an actual combat or a removal response.
+     * This is a gate only: native mode, cost and threat evaluation still decides. */
+    public static boolean considerAkromasWill(Player ai) {
+        var game=ai.getGame();
+        if(ai.getCreaturesInPlay().isEmpty())return false;
+        if(!game.getStack().isEmpty())return true;
+        var phase=game.getPhaseHandler().getPhase();
+        if(phase!=forge.game.phase.PhaseType.COMBAT_DECLARE_ATTACKERS
+                &&phase!=forge.game.phase.PhaseType.COMBAT_DECLARE_BLOCKERS)return false;
+        var combat=game.getCombat();
+        if(combat==null||game.getReplacementHandler().isPreventCombatDamageThisTurn())return false;
+        int usefulPower=0;
+        for(Card c:ai.getCreaturesInPlay()) {
+            if(combat.isBlocking(c))return true; // Native evaluation checks whether the blocker needs saving.
+            if(!combat.isAttacking(c)||c.getNetPower()<=0)continue;
+            if(c.hasDoubleStrike()&&c.hasKeyword(forge.game.keyword.Keyword.FLYING))continue;
+            usefulPower+=c.getNetPower();
+            var defender=combat.getDefenderByAttacker(c);
+            if(defender instanceof Player p) {
+                int damage=ComputerUtilCombat.damageIfUnblocked(c,p,combat,true);
+                if(!p.cantLoseForZeroOrLessLife()&&damage<p.getLife()&&damage*2>=p.getLife())return true;
+                if(c.isCommander()&&p.getCommanderDamage(c)+damage<21&&p.getCommanderDamage(c)+damage*2>=21)return true;
+            }
+        }
+        return usefulPower>=4;
+    }
+
     public static boolean applies(Player ai) {
         return ai.getGame().getRules().hasAppliedVariant(GameType.Commander);
     }

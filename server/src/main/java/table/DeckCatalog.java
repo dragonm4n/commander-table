@@ -56,6 +56,7 @@ public final class DeckCatalog {
  }
  public static Map<String,Object> describe(String id,Deck deck){
   var result=obj("id",id,"name",id,"commander",String.join(" / ",deck.getCommanders().stream().map(PaperCard::getName).toList()),"ai",coverage(deck));
+  var cards=new ArrayList<Object>();for(var entry:deck.getMain())cards.add(obj("name",entry.getKey().getName(),"count",entry.getValue(),"type",entry.getKey().getRules().getType().toString(),"mana",entry.getKey().getRules().getManaCost().toString()));result.put("cards",cards);
   result.putAll(metadata.getOrDefault(id,obj("kind","custom")));return result;
  }
 }

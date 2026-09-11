@@ -1,6 +1,52 @@
+# Commander Table alpha 0.6
+
+Commander-focused AI, clearer choices and public action feedback. Includes the previous local interface and AI-series improvements.
+
+- Land tutors consider missing colored pips in the AI's hand and command zone, including repeated pips and colored mana sources. Native balancing remains the fallback.
+- A bounded casting preference favors commanders and cards matching Forge's explicit commander deck hints. Commander creatures receive additional value in native preservation and target comparisons. These heuristics do not provide complete strategic understanding or measured win-rate gains.
+- Tutor announcements identify chosen cards and actual destinations, including library top/bottom. Unrevealed searches keep the identity private to the searching player; opponents and spectators see a hidden-card notice.
+- Modal spell and ability announcements display the chosen modes.
+- A spiral marks summoning sickness. Minimal animations above Hand, Graveyard and Exile indicate card arrivals without exposing identities or changing the battlefield layout; reduced-motion settings are respected.
+- Myriad's per-opponent copies exclude eliminated players, including elimination before the trigger resolves.
+- **No interaction** sits above the End Turn controls and automatically switches off when any human turn begins. Required choices still wait for the player.
+- Scry offers explicit top/bottom choices in a window, with View battlefield and Return to choice. Multiple-card arrangements support separate top and bottom groups and ordering.
+- Optional effect taxes offer **Pay [cost]** and **Don't pay**, followed by native payment when accepted.
+- Exiled cards sit beneath a permanent only when there is a recognized future relationship, such as hideaway, imprint or return when the permanent leaves.
+
+Install the complete package into a new folder; the engine, Java bridge and UI all changed. Local build, not yet published to GitHub.
+
+---
+
 # Commander Table alpha 0.5
 
 Twelve original Commander precons with twelve separate AI adaptations, expanded card inspection, four-AI tables and initial Commander AI improvements.
+
+## Local AI-series preview (not yet published)
+
+- Creatures with summoning sickness display an hourglass badge, using Forge's current state and its haste exception.
+- Four-AI setup supports custom names and series of 1–100 consecutive games with the selected decks. Each new game reshuffles and starts through the native engine.
+- Optional fast testing removes spectator presentation delays. The server runs the series even if the viewing browser disconnects; restarting the Java server loses the in-memory run.
+- The results window tracks wins and games per AI/deck, draws, aggregate deck appearances and individual outcomes. Export the report as JSON before starting another run.
+- Stop after the current game, or interrupt through Restart. Completed results remain available in the lobby; interrupted or failed games are excluded from win totals.
+- Controlled match cleanup prevents Forge from automatically replaying draws outside the requested series count. These are matchup results from the tested decks, not a general deck-strength or piloting-accuracy rating.
+
+## Local auto-pass preview (not yet published)
+
+- Combat declaration notices now float above the table and can be dismissed without moving or resizing any battlefield.
+- Adds the toggleable **Sem interação** switch to the action dock. While enabled, your browser passes your priority during AI turns, with a short delay. It pauses on any human turn and on required choices, target selection or blocking. Each human controls their own switch; it starts off when entering a match.
+- Unchecking cancels the next scheduled pass. The server rechecks the current input, AI turn and control version before accepting an automatic pass, so a stale request cannot confirm another kind of decision. The switch remains available while other actions are busy.
+
+## Local interaction preview — September 10, 2026 (not yet published)
+
+- Linked exiled cards, including hideaway cards, appear beneath their source while it remains on the battlefield. The linked-card viewer preserves Forge's face-down visibility rules.
+- Increased hand/action dock height. Card art inspection now opens explicitly through the magnifier; hovering battlefield cards or choice rows no longer opens an obstructing inspector.
+- Dedicated attacker/blocker instructions, defender selection buttons and an outlined selected defender make combat choices visible before arrows appear.
+- Target selection displays its source, minimum/maximum and selected count. Continuing with zero optional targets requires confirmation. Angel of the Ruins uses “up to two targets,” rather than a separate may confirmation.
+- Card-backed confirmation dialogs retain their source card. Casts, activations and triggers have queued four-second announcements in human and spectator matches. Human-match announcements do not intercept clicks and shrink during target selection; no extra engine delays are added to human matches.
+- Deck selection uses a larger searchable catalog, original/adapted filters, commander art, complete main-deck lists and visible substitutions.
+- A conservative Commander-specific Akroma's Will timing gate preserves it outside an actual combat or removal response and avoids low-impact attacks. Native mode and threat evaluation still decides whether to cast. This is not a complete combat simulation or a change to every mass-pump spell.
+
+Validated with 197 native AI checks, 18 browser-logic tests, desktop/mobile Edge checks and real-engine ETB/combat and restart integration tests.
 
 ## Local deck and combat preview (not yet published)
 

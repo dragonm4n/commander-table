@@ -50,7 +50,61 @@ public final class AiDecisionTest {
  static void choose(Player expected,String message) {
   for(int i=0;i<30;i++)check(AiAttackController.choosePreferredDefenderPlayer(ai,true)==expected,message);
  }
+ static void akromasWill() {
+  board();check(!CommanderThreat.considerAkromasWill(ai),"Keep Akroma's Will on an empty board");
+  Card c=put(ai,"Grizzly Bears");check(!CommanderThreat.considerAkromasWill(ai),"Keep Will during quiet main phase");
+  var will=Card.fromPaperCard(FModel.getMagicDb().getCommonCards().getCard("Akroma's Will"),ai);
+  var spell=will.getFirstSpellAbility();spell.setActivatingPlayer(ai);
+  check(!SpellApiToAi.Converter.get(spell).canPlayWithSubs(ai,spell).willingToPlay(),"Native Charm AI respects the quiet-phase gate");
+  game.getPhaseHandler().devModeSet(PhaseType.COMBAT_DECLARE_ATTACKERS,ai);
+  var combat=new forge.game.combat.Combat(ai);game.getPhaseHandler().setCombat(combat);
+  check(!CommanderThreat.considerAkromasWill(ai),"Do not spend Will with no declared attackers");
+  combat.addAttacker(c,weak);
+  check(!CommanderThreat.considerAkromasWill(ai),"Save Will rather than doubling two damage at 40 life");
+  weak.setLife(4,null);check(CommanderThreat.considerAkromasWill(ai),"Consider a small attacker when doubling is lethal");
+  weak.setLife(40,null);var second=put(ai,"Grizzly Bears");combat.addAttacker(second,weak);
+  check(CommanderThreat.considerAkromasWill(ai),"Consider Will for a meaningful attacking board");
+  game.getPhaseHandler().devModeSet(PhaseType.MAIN2,ai);check(!CommanderThreat.considerAkromasWill(ai),"Keep Will after combat");
+ }
+ static void myriadLivingPlayers() {
+  board();Card attacker=put(ai,"Grizzly Bears");
+  var combat=new forge.game.combat.Combat(ai);game.getPhaseHandler().setCombat(combat);combat.addAttacker(attacker,weak);
+  other.concede();
+  var copy=forge.game.ability.AbilityFactory.getAbility("DB$ CopyPermanent | Defined$ Self | ForEach$ OppNonDefendingPlayer | TokenTapped$ True | TokenAttacking$ RememberedPlayer | CleanupForEach$ True",attacker);
+  copy.setActivatingPlayer(ai);new forge.game.ability.effects.CopyPermanentEffect().resolve(copy);
+  var tokens=ai.getCreaturesInPlay().stream().filter(Card::isToken).toList();
+  check(tokens.size()==1,"Myriad copies only for the surviving non-defending opponent");
+  check(combat.getDefenderByAttacker(tokens.get(0))==threat,"Myriad token attacks the living opponent");
+ }
+ static void manaAndCommander() {
+  board();
+  Card lathril=Card.fromPaperCard(FModel.getMagicDb().getCommonCards().getCard("Lathril, Blade of the Elves"),ai);lathril.setCommander(true);
+  game.getAction().moveTo(ZoneType.Command,lathril,null,AbilityKey.newMap());
+  put(ai,"Forest");
+  Card forest=Card.fromPaperCard(FModel.getMagicDb().getCommonCards().getCard("Forest"),ai);
+  Card swamp=Card.fromPaperCard(FModel.getMagicDb().getCommonCards().getCard("Swamp"),ai);
+  check(CommanderThreat.neededLand(ai,List.of(forest,swamp))==swamp,"Fetch missing commander color instead of another Forest");
+  var fetch=Card.fromPaperCard(FModel.getMagicDb().getCommonCards().getCard("Rampant Growth"),ai).getFirstSpellAbility();fetch.setActivatingPlayer(ai);
+  check(forge.ai.ability.ChangeZoneAi.chooseCardToHiddenOriginChangeZone(ZoneType.Battlefield,List.of(ZoneType.Library),fetch,new forge.game.card.CardCollection(List.of(forest,swamp)),ai,ai)==swamp,"Native land tutor uses missing-color evaluation");
+  var spell=lathril.getFirstSpellAbility();spell.setActivatingPlayer(ai);
+  check(CommanderThreat.commanderPriority(spell)==3,"Bounded commander casting preference");
+  var elf=Card.fromPaperCard(FModel.getMagicDb().getCommonCards().getCard("Llanowar Elves"),ai).getFirstSpellAbility();elf.setActivatingPlayer(ai);
+  check(CommanderThreat.commanderPriority(elf)==1,"Lathril's explicit Elf strategy gets a bounded preference");
+  var unrelated=Card.fromPaperCard(FModel.getMagicDb().getCommonCards().getCard("Grizzly Bears"),ai).getFirstSpellAbility();unrelated.setActivatingPlayer(ai);
+  check(CommanderThreat.commanderPriority(unrelated)==0,"Unrelated creatures do not receive the strategy bonus");
+  var bear=put(ai,"Grizzly Bears");int baseline=ComputerUtilCard.evaluateCreature(bear);bear.setCommander(true);
+  check(ComputerUtilCard.evaluateCreature(bear)==baseline+35,"Protect commander value in native creature comparisons");
+  put(ai,"Swamp");check(CommanderThreat.neededLand(ai,List.of(forest,swamp))==null,"Balanced colors retain native fallback");
+  Card demand=Card.fromPaperCard(FModel.getMagicDb().getCommonCards().getCard("Counterspell"),ai);
+  game.getAction().moveTo(ZoneType.Hand,demand,null,AbilityKey.newMap());put(ai,"Island");
+  Card island=Card.fromPaperCard(FModel.getMagicDb().getCommonCards().getCard("Island"),ai);
+  check(CommanderThreat.neededLand(ai,List.of(forest,island))==island,"Double-blue hand cost needs a second blue source");
+  put(ai,"Island");check(CommanderThreat.neededLand(ai,List.of(forest,island))==null,"Do not overfetch already satisfied blue pips");
+ }
  static void run() {
+  myriadLivingPlayers();
+  manaAndCommander();
+  akromasWill();
   attackDiagnostics();
   blocking();
   board();weak.setLife(1,null);

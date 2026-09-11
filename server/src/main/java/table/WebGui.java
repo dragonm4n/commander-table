@@ -25,13 +25,24 @@ public final class WebGui extends BaseWebGui {
  public volatile Decision prompt;public volatile int controlVersion=0;
  private volatile String message="Waiting for the game",okLabel="Confirm",cancelLabel="Cancel";
  private volatile boolean okEnabled=false,cancelEnabled=false;
+ private volatile CardView promptCard,focusCard;
+ private volatile int selectionMin=0,selectionMax=0;
  private final Map<Integer,PlayerView> knownPlayers=new LinkedHashMap<>();
  private final Map<Integer,CardView> knownCards=new ConcurrentHashMap<>();
  static final ITriggerEvent CLICK=new ITriggerEvent(){public int getButton(){return 1;}public int getX(){return 0;}public int getY(){return 0;}};
  WebGui(TableServer.Room r,int s){room=r;seat=s;}
  public synchronized void refresh(){
   try{
-   GameView g=getGameView();Map<String,Object> state=obj("controlVersion",controlVersion,"message",message,"cancelEndsTurn",cancelLabel.equalsIgnoreCase("End Turn"),"ok",obj("label",okLabel,"enabled",okEnabled),"cancel",obj("label",cancelLabel,"enabled",cancelEnabled),"decision",prompt==null?null:prompt.publicData);
+   GameView g=getGameView();Map<String,Object> state=obj("instanceId",room.gameSequence,"controlVersion",controlVersion,"canAutoPass",canAutoPass(),"message",message,"cancelEndsTurn",cancelLabel.equalsIgnoreCase("End Turn"),"ok",obj("label",okLabel,"enabled",okEnabled),"cancel",obj("label",cancelLabel,"enabled",cancelEnabled),"decision",prompt==null?null:prompt.publicData);
+   if(getGameController() instanceof forge.player.PlayerControllerHuman humanConfirm)
+    state.put("confirmation",humanConfirm.getInputQueue().getInput() instanceof forge.gamemodes.match.input.InputConfirm);
+   if(promptCard!=null)state.put("promptCard",card(promptCard,false));
+   if(getGameController() instanceof forge.player.PlayerControllerHuman human
+      &&human.getInputQueue().getInput() instanceof forge.gamemodes.match.input.InputSelectTargets){
+    long selected=knownCards.values().stream().filter(c->isSelectable(c)&&isHighlighted(c)).count();
+    selected+=knownPlayers.values().stream().filter(this::isHighlighted).count();
+    state.put("targeting",obj("min",selectionMin,"max",selectionMax,"selected",selected,"source",focusCard==null?null:card(focusCard,false)));
+   }
    if(g!=null){state.put("turn",g.getTurn());state.put("round",room.rounds.value());state.put("phase",g.getPhase()==null?"":g.getPhase().name());state.put("activeSeat",room.seatFor(g.getPlayerTurn()));state.put("over",g.isGameOver());state.put("winner",g.getWinningPlayerName());
     List<Object> players=new ArrayList<>();PlayerView viewer=getCurrentPlayer();
     for(PlayerView p:g.getPlayers())knownPlayers.put(p.getId(),p);
@@ -50,7 +61,7 @@ public final class WebGui extends BaseWebGui {
      var nativeGame=room.hosted==null?null:room.hosted.getGame();
      boolean monarch=nativeGame!=null&&nativeGame.getMonarch()!=null&&nativeGame.getMonarch().getId()==p.getId();
      if(p.getKeywords()!=null)for(var keyword:p.getKeywords().getValues())statuses.add(obj("name",keyword.original(),"title",keyword.title(),"text",keyword.reminderText()));
-     players.add(obj("seat",room.seatFor(p),"id",p.getId(),"name",p.getName(),"life",p.getLife(),"lost",p.getHasLost(),"monarch",monarch,"zones",zones,"mana",mana,"counters",counters(p),"commanders",commanders,"statuses",statuses,"lastAction",events==null?null:events.lastAction(room.seatFor(p))));
+     players.add(obj("seat",room.seatFor(p),"id",p.getId(),"name",p.getName(),"life",p.getLife(),"lost",p.getHasLost(),"monarch",monarch,"selectedDefender",g.getPhase()==PhaseType.COMBAT_DECLARE_ATTACKERS&&isHighlighted(p),"zones",zones,"mana",mana,"counters",counters(p),"commanders",commanders,"statuses",statuses,"lastAction",events==null?null:events.lastAction(room.seatFor(p)),"zoneMotions",events==null?List.of():events.zoneMotions(room.seatFor(p)),"announcements",events==null?List.of():events.announcements(room.seatFor(p))));
     }state.put("players",players);
     List<Object> stack=new ArrayList<>();for(StackItemView item:g.getStack()){
      Set<Map<String,Object>> targets=new LinkedHashSet<>();
@@ -99,15 +110,32 @@ public final class WebGui extends BaseWebGui {
   boolean publicZone=c.getZone()==ZoneType.Battlefield||c.getZone()==ZoneType.Command||c.getZone()==ZoneType.Graveyard||c.getZone()==ZoneType.Exile||c.getZone()==ZoneType.Stack;
   boolean hidden=room.aiOnly?(!publicZone||c.isFaceDown()):!explicitlyRevealed&&(!c.canBeShownTo(viewer)||!c.canFaceDownBeShownTo(viewer));
   Map<String,Object> r=obj("id",c.getId(),"hidden",hidden,"name",hidden?"Face-down card":c.getName(),"tapped",c.isTapped(),"attacking",c.isAttacking(),"blocking",c.isBlocking(),"selected",isHighlighted(c),"selectable",isSelectable(c),"actionable",isWeaklySelectable(c),"zone",c.getZone()==null?"":c.getZone().name(),"counters",counters(c),"controllerSeat",room.seatFor(c.getController()));
+  if(c.getZone()==ZoneType.Exile&&c.getExiledWith()!=null&&c.getExiledWith().getZone()==ZoneType.Battlefield&&hasFutureExileLink(c))r.put("exiledWith",obj("id",c.getExiledWith().getId()));
   if(c.getEntityAttachedTo()!=null)r.put("attachedTo",target(c.getEntityAttachedTo()));
   if(!hidden){CardView.CardStateView v=c.getCurrentState();r.putAll(obj("imageName",c.getOracleName()==null?c.getName():c.getOracleName(),"type",v.getType().toString(),"text",c.getText(),"mana",v.getManaCost().toString(),"creature",v.isCreature(),"land",v.isLand(),"power",v.getPower(),"toughness",v.getToughness(),"loyalty",v.getLoyalty(),"sick",c.isSick(),"token",c.isToken(),"commander",c.isCommander(),"transformed",v.getState()==forge.card.CardStateName.Backside,"damage",c.getDamage()));
    if(c.isToken()){String key=v.getImageKey(viewer==null?List.of():List.of(viewer));r.put("tokenImages",TokenArt.paths(key));if(key!=null&&key.startsWith("c:"))r.put("imageName",key.substring(2).split("\\|")[0]);}
   }return r;
  }
- @Override public void setGameView(GameView g){if(g==null&&room.status.equals("finished"))return;super.setGameView(g);refresh();}
+ static boolean mentionsLinkedCard(forge.game.spellability.SpellAbility ability) {
+  for(var part=ability;part!=null;part=part.getSubAbility()) for(String value:part.getMapParams().values())
+   if(value.contains("ExiledWith")||value.contains("Imprinted")||value.contains("Remembered"))return true;
+  return false;
+ }
+ boolean hasFutureExileLink(CardView card) {
+  var source=card.getExiledWith();
+  if(source.getUntilLeavesBattlefield().contains(card)||source.getImprintedCards().contains(card))return true;
+  if(room.hosted==null||room.hosted.getGame()==null)return false;
+  for(var nativeSource:room.hosted.getGame().getCardsIn(ZoneType.Battlefield))if(nativeSource.getId()==source.getId()){
+   for(var ability:nativeSource.getSpellAbilities())if(!ability.isSpell()&&mentionsLinkedCard(ability))return true;
+   for(var trigger:nativeSource.getTriggers())if(mentionsLinkedCard(trigger.ensureAbility()))return true;
+   for(var ability:nativeSource.getStaticAbilities())for(String value:ability.getMapParams().values())if(value.contains("ExiledWith")||value.contains("Imprinted"))return true;
+  }
+  return false;
+ }
+ @Override public void setGameView(GameView g){if(g==null&&(room.status.equals("finished")||room.status.equals("between_games")))return;super.setGameView(g);refresh();}
  @Override protected void updateCurrentPlayer(PlayerView p){refresh();}
  @Override public void openView(TrackableCollection<PlayerView> p){refresh();}
- @Override public void showPromptMessage(PlayerView p,String text,CardView c){message=text;controlVersion++;refresh();}
+ @Override public void showPromptMessage(PlayerView p,String text,CardView c){message=text;promptCard=c;controlVersion++;refresh();}
  @Override public void updateButtons(PlayerView p,String a,String b,boolean ea,boolean eb,boolean focus){okLabel=a;cancelLabel=b;okEnabled=ea;cancelEnabled=eb;controlVersion++;refresh();if(closing)javax.swing.SwingUtilities.invokeLater(()->{if(getGameController() instanceof forge.player.PlayerControllerHuman human)human.getInputQueue().onGameOver(true);});}
  @Override public void updateCards(Iterable<CardView> cs){refresh();}
  @Override public void updateZones(Iterable<PlayerZoneUpdate> z){refresh();}
@@ -120,18 +148,31 @@ public final class WebGui extends BaseWebGui {
  @Override public void updateLives(Iterable<PlayerView> p){refresh();}
  @Override public void updateManaPool(Iterable<PlayerView> p){refresh();}
  @Override public void showCombat(){refresh();}
- @Override public void finishGame(){synchronized(room){if(room.seats[seat].gui!=this)return;if(!closing&&!room.status.equals("restarting"))room.status="finished";room.refresh();}}
+ @Override public void finishGame(){synchronized(room){if(room.seats[seat].gui!=this)return;if(!closing&&!room.status.equals("restarting")&&!room.status.equals("between_games"))room.status="finished";room.refresh();}}
  @Override public void flashIncorrectAction(){message="That action is not valid right now. "+message;refresh();}
  @Override public void showErrorDialog(String msg,String title){message=title+": "+msg;refresh();}
  @Override public void message(String msg,String title){message=msg;refresh();}
  @Override public boolean isUiSetToSkipPhase(PlayerView p,PhaseType t){return false;}
- @Override public void setSelectables(Iterable<CardView> c,int min,int max){super.setSelectables(c,min,max);refresh();}
+ @Override public void setCard(CardView c){focusCard=c;refresh();}
+ @Override public void setSelectables(Iterable<CardView> c,int min,int max){selectionMin=min;selectionMax=max;super.setSelectables(c,min,max);refresh();}
  @Override public void clearSelectables(){super.clearSelectables();refresh();}
  @Override public void setHighlighted(Iterable<GameEntityView> c,boolean b){super.setHighlighted(c,b);refresh();}
  @Override public void setWeaklySelectable(Iterable<CardView> c){super.setWeaklySelectable(c);refresh();}
  @Override public void clearWeaklySelectable(){super.clearWeaklySelectable();refresh();}
 
+ boolean canAutoPass(){
+  if(closing||prompt!=null||room.aiOnly||!room.status.equals("playing")||!okEnabled||!okLabel.equals(forge.util.Localizer.getInstance().getMessage("lblOK")))return false;
+  var g=getGameView();if(g==null||g.isGameOver())return false;
+  int active=room.seatFor(g.getPlayerTurn());
+  if(active<0||room.seats[active].token!=null)return false;
+  return getGameController() instanceof forge.player.PlayerControllerHuman human
+      &&human.getInputQueue().getInput() instanceof forge.gamemodes.match.input.InputPassPriority;
+ }
  public void action(JsonObject b){
+  if(str(b,"action","").equals("passAI")){
+   if(integer(b,"controlVersion",-1)==controlVersion&&canAutoPass())getGameController().selectButtonOk();
+   refresh();return;
+  }
   require(!closing,"This match is restarting.");
   require(prompt==null,"Answer the pending choice.");require(integer(b,"controlVersion",-1)==controlVersion,"The situation changed; try again.");
   var ctl=getGameController();require(ctl!=null,"Player controls are unavailable.");String a=str(b,"action","");
@@ -160,8 +201,9 @@ public final class WebGui extends BaseWebGui {
    publicData=obj("id",id,"kind",this.kind,"message",text,"min",min,"max",max,"options",opts,"presentation",this.options.stream().anyMatch(c->c instanceof CardView cv&&cv.getZone()==ZoneType.Library)?"library":"dock");
   }
  }
- JsonObject ask(String kind,String msg,List<?> choices,int min,int max,FSerializableFunction display){
-  Decision d=new Decision(this,kind,msg,choices,min,max,display);prompt=d;controlVersion++;refresh();
+ JsonObject ask(String kind,String msg,List<?> choices,int min,int max,FSerializableFunction display){return ask(kind,msg,choices,min,max,display,null);}
+ JsonObject ask(String kind,String msg,List<?> choices,int min,int max,FSerializableFunction display,CardView source){
+  Decision d=new Decision(this,kind,msg,choices,min,max,display);if(source!=null){d.publicData.put("source",card(source,false));d.publicData.put("presentation","ability");}prompt=d;controlVersion++;refresh();
   if(closing||room.status.equals("restarting"))releaseForRestart();
   try{return d.future.get();}catch(Exception e){throw new IllegalStateException("Choice interrupted.",e);}finally{if(prompt==d)prompt=null;controlVersion++;refresh();}
  }
@@ -193,7 +235,7 @@ public final class WebGui extends BaseWebGui {
   return choose("select","Choose an ability",choices,1,1,null).get(0);
  }
  @Override public boolean showConfirmDialog(String m,String t,String yes,String no,boolean d){return choose("select",t+" — "+m,List.of(yes,no),1,1,null).get(0).equals(yes);}
- @Override public boolean confirm(CardView c,String q,boolean d,List<String> opts){return choose("select",q,opts,1,1,null).get(0).equals(opts.get(0));}
+ @Override public boolean confirm(CardView c,String q,boolean d,List<String> opts){return ask("select",q,opts,1,1,null,c).getAsJsonArray("selected").get(0).getAsInt()==0;}
  @Override public int showOptionDialog(String m,String t,FSkinProp icon,List<String> opts,int d){return opts.indexOf(choose("select",t+" — "+m,opts,1,1,null).get(0));}
  @Override public String showInputDialog(String m,String t,FSkinProp icon,String initial,List<String> opts,boolean numeric){if(opts!=null&&!opts.isEmpty())return choose("select",m,opts,1,1,null).get(0);return str(ask(numeric?"number":"text",t+" — "+m,List.of(),0,numeric?1000000:500,null),"value","");}
  @Override public Integer getInteger(String m,int min,int max,boolean desc){return ask("number",m,List.of(),min,max,null).get("value").getAsInt();}
@@ -202,7 +244,14 @@ public final class WebGui extends BaseWebGui {
  @Override public GameEntityView chooseSingleEntityForEffect(String msg,List<? extends GameEntityView> options,DelayedReveal reveal,boolean optional){if(reveal!=null)reveal(reveal.getMessagePrefix(),new ArrayList<>(reveal.getCards()));List<? extends GameEntityView> a=choose("select",msg,options,optional?0:1,1,null);return a.isEmpty()?null:a.get(0);}
  @Override public List<GameEntityView> chooseEntitiesForEffect(String msg,List<? extends GameEntityView> opts,int min,int max,DelayedReveal reveal){if(reveal!=null)reveal(reveal.getMessagePrefix(),new ArrayList<>(reveal.getCards()));return new ArrayList<>(choose("select",msg,opts,min,max,null));}
  @Override public <T> void reveal(String msg,List<T> items){choose("reveal",msg,items,0,0,null);}
- @Override public List<CardView> manipulateCardList(String title,Iterable<CardView> cards,Iterable<CardView> movable,boolean top,boolean bottom,boolean anywhere){List<CardView> all=new ArrayList<>(),move=new ArrayList<>();cards.forEach(all::add);movable.forEach(move::add);List<CardView> ordered=choose("order",title+" — select cards in the desired order",move,move.size(),move.size(),null);boolean putTop=top&&(!bottom||showConfirmDialog("Put these cards on top?","Order","Top","Bottom",true));all.removeAll(move);if(putTop)all.addAll(0,ordered);else all.addAll(ordered);return all;}
+ @Override public List<CardView> manipulateCardList(String title,Iterable<CardView> cards,Iterable<CardView> movable,boolean top,boolean bottom,boolean anywhere){
+  List<CardView> all=new ArrayList<>(),move=new ArrayList<>();cards.forEach(all::add);movable.forEach(move::add);
+  List<CardView> below=bottom?(top?choose("select",title+" — choose cards for the bottom; leave the others on top",move,0,move.size(),null):new ArrayList<>(move)):new ArrayList<>();
+  List<CardView> above=new ArrayList<>(move);above.removeAll(below);
+  if(above.size()>1)above=choose("order","Order the top cards — first selected is the next card drawn",above,above.size(),above.size(),null);
+  if(below.size()>1)below=choose("order","Order the bottom cards — first selected goes above the others",below,below.size(),below.size(),null);
+  all.removeAll(move);all.addAll(0,above);all.addAll(below);return all;
+ }
  @Override public Map<CardView,Integer> assignCombatDamage(CardView attacker,List<CardView> blockers,int damage,GameEntityView defender,boolean override,boolean maySkip){
   if(damage<=0)return Map.of();
   List<CardView> options=new ArrayList<>(blockers);boolean divide=attacker.getCurrentState().hasDivideDamage()&&override;
